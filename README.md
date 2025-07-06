@@ -1,4 +1,4 @@
-## Simple Punctuation Processor 
+## punp - Simple Punctuation Processor 
 
 一个基于C++编写的文本符号替换工具, 支持多线程将多文本按照制定规则将符号替换, 不依赖任何第三方库
 
