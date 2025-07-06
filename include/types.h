@@ -24,4 +24,19 @@ namespace PunctuationProcessor {
         size_t n_rep = 0;
     };
 
+    // Configuration for chunk processing
+    struct ChunkProcessingConfig {
+        size_t min_file_size_for_chunking = 1024 * 1024; // 1MB
+        size_t chunk_size = 256 * 1024;                  // 256KB per chunk
+        size_t min_chunks_per_file = 2;                  // Minimum chunks to justify parallel processing
+    };
+
+    // Internal chunk processing result
+    struct ChunkResult {
+        std::wstring content;
+        size_t n_rep = 0;
+        bool ok = true;
+        std::string err_msg;
+    };
+
 } // namespace PunctuationProcessor
