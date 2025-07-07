@@ -3,6 +3,7 @@
 #include "thread_pool.h"
 #include <algorithm>
 #include <codecvt>
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <future>
@@ -43,10 +44,13 @@ namespace PunctuationProcessor {
 
         // Determine optimal thread count
         size_t n_thread = max_threads;
+        size_t hw_max_thread = std::thread::hardware_concurrency();
         if (n_thread == 0) {
-            n_thread = std::min(file_paths.size(),
-                                static_cast<size_t>(std::thread::hardware_concurrency()));
+            n_thread = std::min(file_paths.size(), hw_max_thread - 1); // one thread for main task
             n_thread = std::max(n_thread, static_cast<size_t>(1));
+        } else if (n_thread > hw_max_thread) {
+            // should not create threads more than hw_max_thread
+            n_thread = hw_max_thread - 1;
         }
 
         // Single-threaded processing for small workloads

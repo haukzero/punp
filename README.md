@@ -39,6 +39,7 @@ cmake --install ./build
 
 - 程序后可接多个 option 和多个文件路径
 - Options 说明: 
+    - `-V`, `--version`: 版本信息
     - `-h`, `--help`: 使用说明
     - `-r`, `--recursive`: 对一个目录递归的处理里面的文件
     - `-v`, `--verbose`: 详细的结果输出
