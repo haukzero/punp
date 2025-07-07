@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 
-namespace PunctuationProcessor {
+namespace punp {
     class FileFinder {
     private:
         bool is_dir(const std::string &path) const;
@@ -26,4 +26,4 @@ namespace PunctuationProcessor {
         std::vector<std::string> expand_glob(const std::string &pattern) const;
     };
 
-} // namespace PunctuationProcessor
+} // namespace punp

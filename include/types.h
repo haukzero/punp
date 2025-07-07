@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     // Type definitions
     using ReplacementRule = std::pair<std::wstring, std::wstring>;
@@ -77,4 +77,4 @@ namespace PunctuationProcessor {
             : file_content(fc), total_replacements(reps) {}
     };
 
-} // namespace PunctuationProcessor
+} // namespace punp

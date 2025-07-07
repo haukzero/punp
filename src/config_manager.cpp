@@ -7,7 +7,7 @@
 #include <locale>
 #include <vector>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     bool ConfigManager::load(bool verbose) {
         auto config_files = find_files();
@@ -133,4 +133,4 @@ namespace PunctuationProcessor {
         }
     }
 
-} // namespace PunctuationProcessor
+} // namespace punp

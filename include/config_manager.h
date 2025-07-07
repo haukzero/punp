@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     class ConfigManager {
     private:
@@ -25,4 +25,4 @@ namespace PunctuationProcessor {
         size_t size() const noexcept { return _rep_map.size(); }
     };
 
-} // namespace PunctuationProcessor
+} // namespace punp

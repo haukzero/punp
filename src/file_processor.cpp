@@ -9,7 +9,7 @@
 #include <iostream>
 #include <locale>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     FileProcessor::FileProcessor(const ConfigManager &config_manager)
         : _config_manager(config_manager), _writeback_stop(false) {
@@ -368,4 +368,4 @@ namespace PunctuationProcessor {
         return (null_bytes * 100 / std::max(bytes_read, size_t(1))) < 1;
     }
 
-} // namespace PunctuationProcessor
+} // namespace punp

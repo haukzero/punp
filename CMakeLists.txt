@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(PunctuationProcessor LANGUAGES CXX)
+project(punp CXX)
 
 # Set C++ standard
 set(CMAKE_CXX_STANDARD 17)
@@ -16,9 +16,9 @@ include_directories(include)
 file(GLOB SRCS src/*.cpp)
 
 # Add source files to the executable
-add_executable(punp ${SRCS})
+add_executable(${PROJECT_NAME} ${SRCS})
 
 # Install rules
 set(CMAKE_INSTALL_PREFIX "$ENV{HOME}/.local/")
-install(TARGETS punp DESTINATION bin)
-install(FILES .prules DESTINATION share/punp)
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+install(FILES .prules DESTINATION share/${PROJECT_NAME})

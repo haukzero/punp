@@ -4,7 +4,7 @@
 #include <filesystem>
 #include <iostream>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     std::vector<std::string> FileFinder::find_files(
         const std::vector<std::string> &patterns,
@@ -189,4 +189,4 @@ namespace PunctuationProcessor {
         return files;
     }
 
-} // namespace PunctuationProcessor
+} // namespace punp

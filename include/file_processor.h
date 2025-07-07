@@ -8,7 +8,7 @@
 #include <thread>
 #include <vector>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     class ConfigManager;
     class ThreadPool;
@@ -49,4 +49,4 @@ namespace PunctuationProcessor {
             size_t max_threads = 0) const;
     };
 
-} // namespace PunctuationProcessor
+} // namespace punp

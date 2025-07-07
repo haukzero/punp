@@ -2,7 +2,7 @@
 #include "common.h"
 #include <iostream>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     bool ArgumentParser::parse(int argc, char *argv[]) {
         for (int i = 1; i < argc; ++i) {
@@ -90,4 +90,4 @@ namespace PunctuationProcessor {
                   << Colors::RESET;
     }
 
-} // namespace PunctuationProcessor
+} // namespace punp

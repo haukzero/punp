@@ -9,7 +9,7 @@
 #include <thread>
 #include <vector>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     class ThreadPool {
     private:
@@ -56,4 +56,4 @@ namespace PunctuationProcessor {
         return result;
     }
 
-} // namespace PunctuationProcessor
+} // namespace punp

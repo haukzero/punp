@@ -1,7 +1,7 @@
 #include "thread_pool.h"
 #include <algorithm>
 
-namespace PunctuationProcessor {
+namespace punp {
 
     ThreadPool::ThreadPool(size_t num_threads) : _stop(false) {
         size_t n_thread = num_threads;
@@ -76,4 +76,4 @@ namespace PunctuationProcessor {
         return std::min(n_task, hw_thread_cap);
     }
 
-} // namespace PunctuationProcessor
+} // namespace punp

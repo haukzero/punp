@@ -6,7 +6,7 @@
 #include <chrono>
 #include <iostream>
 
-using namespace PunctuationProcessor;
+using namespace punp;
 
 int main(int argc, char *argv[]) {
     auto start = std::chrono::high_resolution_clock::now();

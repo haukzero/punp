@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace PunctuationProcessor {
+namespace punp{
 
     class ArgumentParser {
     private:
@@ -29,4 +29,4 @@ namespace PunctuationProcessor {
         static void display_help(const std::string &name);
     };
 
-} // namespace PunctuationProcessor
+} // namespace punp

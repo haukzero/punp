@@ -1,6 +1,6 @@
 #pragma once
 
-namespace PunctuationProcessor {
+namespace punp {
 
     namespace Version {
         constexpr const char *VERSION = "2.1.1";
@@ -20,4 +20,4 @@ namespace PunctuationProcessor {
         constexpr const char *CYAN = "\033[36m";
     }
 
-} // namespace PunctuationProcessor
+} // namespace punp
