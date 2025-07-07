@@ -2,6 +2,6 @@
 
 namespace PunctuationProcessor {
     namespace Version {
-        constexpr const char *VERSION = "2.0.1";
+        constexpr const char *VERSION = "2.0.2";
     } // namespace Version
 } // namespace PunctuationProcessor
