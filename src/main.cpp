@@ -1,5 +1,5 @@
 #include "argument_parser.h"
-#include "colors.h"
+#include "common.h"
 #include "config_manager.h"
 #include "file_finder.h"
 #include "file_processor.h"

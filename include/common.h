@@ -2,6 +2,14 @@
 
 namespace PunctuationProcessor {
 
+    namespace Version {
+        constexpr const char *VERSION = "2.1.1";
+    } // namespace Version
+
+    namespace RuleFile {
+        constexpr const char *NAME = ".prules";
+    } // namespace RuleFile
+
     namespace Colors {
         constexpr const char *RESET = "\033[0m";
         constexpr const char *RED = "\033[31m";

@@ -1,5 +1,5 @@
 #include "file_finder.h"
-#include "colors.h"
+#include "common.h"
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
@@ -29,6 +29,14 @@ namespace PunctuationProcessor {
                 std::cerr << Colors::YELLOW << "Warning: '" << pattern << "' not found" << '\n'
                           << Colors::RESET;
             }
+
+            // Ignore the rule file
+            matched_files.erase(
+                std::remove_if(matched_files.begin(), matched_files.end(),
+                               [](const std::string &file) {
+                                   return file.find(RuleFile::NAME) != std::string::npos;
+                               }),
+                matched_files.end());
 
             // Append to result
             all_files.insert(all_files.end(), matched_files.begin(), matched_files.end());

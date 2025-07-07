@@ -1,6 +1,5 @@
 #include "argument_parser.h"
-#include "colors.h"
-#include "version.h"
+#include "common.h"
 #include <iostream>
 
 namespace PunctuationProcessor {

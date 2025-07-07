@@ -1,5 +1,5 @@
 #include "config_manager.h"
-#include "colors.h"
+#include "common.h"
 #include <codecvt>
 #include <cstdlib>
 #include <fstream>
@@ -43,17 +43,16 @@ namespace PunctuationProcessor {
 
     std::vector<std::string> ConfigManager::find_files() const {
         std::vector<std::string> config_files;
-        const std::string config_file_name = ".prules";
 
         // Check user config directory first (lower priority)
         const char *home_dir = std::getenv("HOME");
         if (home_dir) {
-            std::string user_config = std::string(home_dir) + "/.local/share/punp/" + config_file_name;
+            std::string user_config = std::string(home_dir) + "/.local/share/punp/" + RuleFile::NAME;
             config_files.emplace_back(user_config);
         }
 
         // Check current directory (higher priority)
-        config_files.emplace_back(config_file_name);
+        config_files.emplace_back(RuleFile::NAME);
 
         return config_files;
     }
