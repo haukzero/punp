@@ -11,7 +11,24 @@
 
 namespace PunctuationProcessor {
 
-    FileProcessor::FileProcessor(const ConfigManager &config_manager) : _config_manager(config_manager) {}
+    FileProcessor::FileProcessor(const ConfigManager &config_manager)
+        : _config_manager(config_manager), _writeback_stop(false) {
+        // Start the writeback thread
+        _writeback_thread = std::thread(&FileProcessor::writeback_worker, this);
+    }
+
+    FileProcessor::~FileProcessor() {
+        // shutdown writeback thread
+        {
+            std::lock_guard<std::mutex> lock(_writeback_mtx);
+            _writeback_stop = true;
+        }
+        _writeback_cv.notify_all();
+
+        if (_writeback_thread.joinable()) {
+            _writeback_thread.join();
+        }
+    }
 
     std::vector<ProcessingResult> FileProcessor::process_files(
         const std::vector<std::string> &file_paths,
@@ -42,8 +59,8 @@ namespace PunctuationProcessor {
         // Determine optimal thread count
         size_t n_thread = max_threads;
         size_t hw_max_thread = std::thread::hardware_concurrency();
-        if (hw_max_thread > 1) {
-            hw_max_thread -= 1; // Reserve one thread for the main thread
+        if (hw_max_thread > 2) {
+            hw_max_thread -= 2; // Reserve tow thread for the main thread and writeback thread
         }
         size_t total_pages = 0;
         for (const auto &pages : file_pages) {
@@ -84,32 +101,36 @@ namespace PunctuationProcessor {
             const auto &file_path = file_paths[i];
             const auto &file_content = file_contents[i];
 
+            ProcessingResult result;
+            result.file_path = file_path;
+            result.ok = true;
+            result.n_rep = 0;
+
             if (!file_content) {
                 // File loading failed
-                ProcessingResult result;
-                result.file_path = file_path;
                 result.ok = false;
                 result.err_msg = "Failed to load file content";
-                results.push_back(result);
+                results.emplace_back(result);
                 continue;
             }
 
-            std::vector<PageResult> page_results;
-            page_results.reserve(file_pages[i].size());
-
             for (auto &page_future : page_futures[i]) {
                 try {
-                    page_results.emplace_back(page_future.get());
+                    auto page_result = page_future.get();
+                    if (!page_result.ok) {
+                        result.ok = false;
+                        result.err_msg = page_result.err_msg;
+                        break;
+                    }
+                    result.n_rep += page_result.n_rep;
                 } catch (const std::exception &e) {
-                    PageResult err_page;
-                    err_page.file_path = file_path;
-                    err_page.ok = false;
-                    err_page.err_msg = std::string("Page future exception: ") + e.what();
-                    page_results.emplace_back(err_page);
+                    result.ok = false;
+                    result.err_msg = std::string("Page future exception: ") + e.what();
+                    break;
                 }
             }
 
-            results.emplace_back(merge_page_results(file_path, page_results));
+            results.emplace_back(result);
         }
 
         return results;
@@ -155,6 +176,9 @@ namespace PunctuationProcessor {
             // Single page for small files
             Page sp(fc_ptr, 0, 0, content_size);
             pages.emplace_back(std::move(sp));
+            fc_ptr->ref_cnt = 1;
+            fc_ptr->processed_pages.resize(1);
+
             return pages;
         }
 
@@ -184,6 +208,9 @@ namespace PunctuationProcessor {
             start_pos = end_pos;
         }
 
+        fc_ptr->ref_cnt = static_cast<int>(pages.size());
+        fc_ptr->processed_pages.resize(pages.size());
+
         return pages;
     }
 
@@ -202,6 +229,22 @@ namespace PunctuationProcessor {
             // Apply replacements
             result.n_rep = apply_replace(result.processed_content);
 
+            page.f_ptr->total_replacements.fetch_add(result.n_rep);
+
+            {
+                std::lock_guard<std::mutex> lock(page.f_ptr->processed_mutex);
+                if (page.f_ptr->processed_pages.size() <= page.pid) {
+                    page.f_ptr->processed_pages.resize(page.pid + 1);
+                }
+                page.f_ptr->processed_pages[page.pid] = result.processed_content;
+            }
+
+            int remaining = page.f_ptr->ref_cnt.fetch_sub(1) - 1;
+            if (remaining == 0) {
+                size_t total_reps = page.f_ptr->total_replacements.load();
+                const_cast<FileProcessor *>(this)->notify_writeback(page.f_ptr, total_reps);
+            }
+
         } catch (const std::exception &e) {
             result.ok = false;
             result.err_msg = std::string("Page processing exception: ") + e.what();
@@ -210,63 +253,71 @@ namespace PunctuationProcessor {
         return result;
     }
 
-    ProcessingResult FileProcessor::merge_page_results(
-        const std::string &file_path,
-        const std::vector<PageResult> &page_results) const {
+    void FileProcessor::writeback_worker() {
+        while (true) {
+            std::unique_lock<std::mutex> lock(_writeback_mtx);
 
-        ProcessingResult result;
-        result.file_path = file_path;
-        result.ok = false;
-        result.n_rep = 0;
+            _writeback_cv.wait(lock, [this] {
+                return !_writeback_queue.empty() || _writeback_stop;
+            });
 
+            if (_writeback_stop && _writeback_queue.empty()) {
+                break;
+            }
+
+            if (!_writeback_queue.empty()) {
+                auto notification = _writeback_queue.front();
+                _writeback_queue.pop();
+                lock.unlock();
+
+                writeback(notification.file_content, notification.total_replacements);
+            }
+        }
+    }
+
+    void FileProcessor::notify_writeback(std::shared_ptr<FileContent> file_content, size_t replacements) {
+        std::lock_guard<std::mutex> lock(_writeback_mtx);
+        _writeback_queue.emplace(file_content, replacements);
+        _writeback_cv.notify_one();
+    }
+
+    bool FileProcessor::writeback(const std::shared_ptr<FileContent> &file_content, size_t total_replacements) const {
         try {
-            // Check if any page failed
-            for (const auto &page_result : page_results) {
-                if (!page_result.ok) {
-                    result.err_msg = page_result.err_msg;
-                    return result;
+            if (total_replacements == 0) {
+                return true;
+            }
+
+            std::wstring complete_content;
+            {
+                std::lock_guard<std::mutex> lock(file_content->processed_mutex);
+
+                size_t total_size = 0;
+                for (const auto &page_content : file_content->processed_pages) {
+                    total_size += page_content.size();
+                }
+                complete_content.reserve(total_size);
+
+                for (const auto &page_content : file_content->processed_pages) {
+                    complete_content += page_content;
                 }
             }
 
-            // Sort page results by page_id to ensure correct order
-            auto sorted_results = page_results;
-            std::sort(sorted_results.begin(), sorted_results.end(),
-                      [](const PageResult &a, const PageResult &b) {
-                          return a.page_id < b.page_id;
-                      });
-
-            // Reconstruct content and count replacements
-            std::wstring processed_content;
-            size_t total_size = 0;
-            for (const auto &page_result : sorted_results) {
-                total_size += page_result.processed_content.size();
-                result.n_rep += page_result.n_rep;
+            std::wofstream output_file(file_content->filename);
+            if (!output_file) {
+                std::cerr << "Cannot open file for writing: " << file_content->filename << std::endl;
+                return false;
             }
 
-            processed_content.reserve(total_size);
-            for (const auto &page_result : sorted_results) {
-                processed_content += page_result.processed_content;
-            }
+            output_file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
+            output_file << complete_content;
+            output_file.close();
 
-            // Write back to file if changes were made
-            if (result.n_rep > 0) {
-                std::wofstream output_file(file_path);
-                if (!output_file) {
-                    result.err_msg = "Cannot open file for writing";
-                    return result;
-                }
-                output_file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
-                output_file << processed_content;
-                output_file.close();
-            }
-
-            result.ok = true;
+            return true;
 
         } catch (const std::exception &e) {
-            result.err_msg = std::string("Page merging exception: ") + e.what();
+            std::cerr << "Error writing file " << file_content->filename << ": " << e.what() << std::endl;
+            return false;
         }
-
-        return result;
     }
 
     size_t FileProcessor::apply_replace(std::wstring &text) const {

@@ -1,8 +1,11 @@
 #pragma once
 
+#include <atomic>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 namespace PunctuationProcessor {
 
@@ -27,13 +30,17 @@ namespace PunctuationProcessor {
 
     // Configuration for page processing
     struct PageProcessingConfig {
-        size_t page_size = 256 * 1024; // 256KB per page
+        size_t page_size = 16 * 1024; // 16KB per page
     };
 
     // File content structure
     struct FileContent {
         std::string filename;
         std::wstring content;
+        std::atomic<int> ref_cnt{0};
+        std::vector<std::wstring> processed_pages;
+        std::atomic<size_t> total_replacements{0};
+        std::mutex processed_mutex;
 
         FileContent(const std::string &name, const std::wstring &data)
             : filename(name), content(data) {}
@@ -59,6 +66,15 @@ namespace PunctuationProcessor {
         size_t n_rep = 0;
         bool ok = true;
         std::string err_msg;
+    };
+
+    // Writeback notification
+    struct WritebackNotification {
+        std::shared_ptr<FileContent> file_content;
+        size_t total_replacements;
+
+        WritebackNotification(std::shared_ptr<FileContent> fc, size_t reps)
+            : file_content(fc), total_replacements(reps) {}
     };
 
 } // namespace PunctuationProcessor

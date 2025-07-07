@@ -1,7 +1,11 @@
 #pragma once
 
 #include "types.h"
+#include <atomic>
+#include <condition_variable>
+#include <queue>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace PunctuationProcessor {
@@ -13,6 +17,12 @@ namespace PunctuationProcessor {
     private:
         const ConfigManager &_config_manager;
         PageProcessingConfig _page_config;
+
+        std::queue<WritebackNotification> _writeback_queue;
+        std::mutex _writeback_mtx;
+        std::condition_variable _writeback_cv;
+        std::atomic<bool> _writeback_stop{false};
+        std::thread _writeback_thread;
 
         size_t apply_replace(std::wstring &text) const;
         bool is_text_file(const std::string &file_path) const;
@@ -26,13 +36,13 @@ namespace PunctuationProcessor {
         // Process a single page
         PageResult process_page(const Page &page) const;
 
-        // Merge page results back into file
-        ProcessingResult merge_page_results(const std::string &file_path,
-                                            const std::vector<PageResult> &page_results) const;
+        void notify_writeback(std::shared_ptr<FileContent> file_content, size_t replacements);
+        void writeback_worker();
+        bool writeback(const std::shared_ptr<FileContent> &file_content, size_t total_replacements) const;
 
     public:
         explicit FileProcessor(const ConfigManager &config_manager);
-        ~FileProcessor() = default;
+        ~FileProcessor();
 
         std::vector<ProcessingResult> process_files(
             const std::vector<std::string> &file_paths,
