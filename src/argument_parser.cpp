@@ -1,5 +1,6 @@
 #include "argument_parser.h"
 #include "colors.h"
+#include "version.h"
 #include <iostream>
 
 namespace PunctuationProcessor {
@@ -13,10 +14,15 @@ namespace PunctuationProcessor {
             i += consumed - 1; // Adjust index for consumed arguments
         }
 
-        return !_inputs.empty() || _show_help;
+        return !_inputs.empty() || _show_help || _show_version;
     }
 
     int ArgumentParser::process_args(const std::string &arg, const char *next_arg) {
+        if (arg == "-V" || arg == "--version") {
+            _show_version = true;
+            return 1;
+        }
+
         if (arg == "-h" || arg == "--help") {
             _show_help = true;
             return 1;
@@ -59,10 +65,15 @@ namespace PunctuationProcessor {
         return 1;
     }
 
+    void ArgumentParser::display_version() {
+        std::cout << "v" << Version::VERSION << '\n';
+    }
+
     void ArgumentParser::display_help(const std::string &programName) {
         std::cout << Colors::GREEN << "Usage: " << programName << " [OPTIONS] <files...>\n";
         std::cout << Colors::CYAN << "High-performance punctuation replacement tool\n";
         std::cout << Colors::GREEN << "Options:\n";
+        std::cout << Colors::BLUE << "  -V, --version" << Colors::YELLOW << "           Show version information\n";
         std::cout << Colors::BLUE << "  -h, --help" << Colors::YELLOW << "              Show this help message\n";
         std::cout << Colors::BLUE << "  -r, --recursive" << Colors::YELLOW << "         Process directories recursively\n";
         std::cout << Colors::BLUE << "  -v, --verbose" << Colors::YELLOW << "           Enable verbose output\n";

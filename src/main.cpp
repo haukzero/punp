@@ -20,6 +20,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    if (parser.show_version()) {
+        ArgumentParser::display_version();
+        return 0;
+    }
+
     if (parser.show_help()) {
         ArgumentParser::display_help(argv[0]);
         return 0;

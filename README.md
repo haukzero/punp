@@ -6,6 +6,8 @@
 
 ## Update
 
+- 2025.7.7:
+    - 添加 version info
 - 2025.7.6: 当处理大文件时, 将大文件分块提交到线程池处理, 提升性能
     - 在 13th Gen Intel(R) Core(TM) i9-13900H (14 核, 20 逻辑处理器) 上对 LongBench(zh) (36M) 测试, 达到 **75.1x speedup** (88927ms -> 1184ms)
 
