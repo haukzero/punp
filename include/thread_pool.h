@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
 #include <functional>
 #include <future>
 #include <mutex>
@@ -26,6 +27,8 @@ namespace punp {
     public:
         explicit ThreadPool(size_t num_threads = 0);
         ~ThreadPool();
+
+        void scaling(size_t n_inc);
 
         template <typename F, typename... Args>
         auto submit(F &&f, Args &&...args) -> std::future<decltype(f(args...))>;

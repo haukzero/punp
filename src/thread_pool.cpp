@@ -19,6 +19,18 @@ namespace punp {
         shutdown();
     }
 
+    void ThreadPool::scaling(size_t n_inc) {
+        if (n_inc == 0) {
+            return; // No scaling needed
+        }
+
+        size_t new_thread_count = _workers.size() + n_inc;
+        _workers.reserve(new_thread_count);
+        for (size_t i = _workers.size(); i < new_thread_count; ++i) {
+            _workers.emplace_back(&ThreadPool::worker_thread, this);
+        }
+    }
+
     void ThreadPool::shutdown() {
         {
             std::lock_guard<std::mutex> lock(_queue_mtx);

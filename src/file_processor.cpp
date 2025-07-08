@@ -38,30 +38,55 @@ namespace punp {
             return {};
         }
 
-        // Load all files and create their pages
-        std::vector<std::shared_ptr<FileContent>> file_contents;
-        std::vector<std::vector<Page>> file_pages;
-        file_contents.reserve(file_paths.size());
-        file_pages.reserve(file_paths.size());
+        size_t hw_max_thread = std::thread::hardware_concurrency();
+        if (hw_max_thread > 2) {
+            hw_max_thread -= 2; // Reserve tow thread for the main thread and writeback thread
+        }
 
-        for (const auto &file_path : file_paths) {
-            auto file_content = load_file_content(file_path);
-            if (file_content) {
-                file_contents.emplace_back(file_content);
-                file_pages.emplace_back(create_pages(file_content));
-            } else {
-                // Handle file loading error
-                file_contents.emplace_back(nullptr);
-                file_pages.push_back({});
+        std::vector<std::shared_ptr<FileContent>> file_contents(file_paths.size());
+        std::vector<std::vector<Page>> file_pages(file_paths.size());
+        size_t loading_threads = max_threads;
+        if (max_threads == 0) {
+            loading_threads = std::min(file_paths.size(), hw_max_thread);
+            loading_threads = std::max(loading_threads, static_cast<size_t>(1));
+        } else {
+            loading_threads = std::min(loading_threads, hw_max_thread);
+        }
+
+        ThreadPool thread_pool(loading_threads);
+
+        // Submit file loading tasks
+        std::vector<std::future<std::pair<std::shared_ptr<FileContent>, std::vector<Page>>>> loading_futures;
+        loading_futures.reserve(file_paths.size());
+
+        for (size_t i = 0; i < file_paths.size(); ++i) {
+            loading_futures.emplace_back(
+                thread_pool.submit([this, &file_paths, i]() -> std::pair<std::shared_ptr<FileContent>, std::vector<Page>> {
+                    auto file_content = load_file_content(file_paths[i]);
+                    if (file_content) {
+                        auto pages = create_pages(file_content);
+                        return std::make_pair(file_content, std::move(pages));
+                    } else {
+                        return std::make_pair(nullptr, std::vector<Page>{});
+                    }
+                }));
+        }
+
+        // Collect loading results
+        for (size_t i = 0; i < file_paths.size(); ++i) {
+            try {
+                auto result = loading_futures[i].get();
+                file_contents[i] = result.first;
+                file_pages[i] = std::move(result.second);
+            } catch (const std::exception &e) {
+                // Handle loading error
+                file_contents[i] = nullptr;
+                file_pages[i] = {};
             }
         }
 
         // Determine optimal thread count
         size_t n_thread = max_threads;
-        size_t hw_max_thread = std::thread::hardware_concurrency();
-        if (hw_max_thread > 2) {
-            hw_max_thread -= 2; // Reserve tow thread for the main thread and writeback thread
-        }
         size_t total_pages = 0;
         for (const auto &pages : file_pages) {
             total_pages += pages.size();
@@ -72,8 +97,8 @@ namespace punp {
         } else {
             n_thread = std::min(n_thread, hw_max_thread);
         }
-        // Create thread pool
-        ThreadPool thread_pool(n_thread);
+        // Scaling the thread pool to the optimal number of threads
+        thread_pool.scaling(n_thread - thread_pool.thread_cnt());
 
         // Submit all pages to thread pool
         std::vector<std::vector<std::future<PageResult>>> page_futures;
@@ -132,6 +157,9 @@ namespace punp {
 
             results.emplace_back(result);
         }
+
+        // Shutdown the thread pool
+        thread_pool.shutdown();
 
         return results;
     }
