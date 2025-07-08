@@ -75,7 +75,35 @@ namespace punp {
                 continue;
             }
 
-            // Parse format: "from" -> "to"
+            // Erase format: - "from"
+            line.erase(0, line.find_first_not_of(" \t"));
+            if (line.compare(0, 2, "- ") == 0) {
+                line.erase(0, 2);
+                if (line.empty() || line[0] != '"' || line.back() != '"') {
+                    std::cerr << Colors::YELLOW << "Warning: Invalid format at " << file_path
+                              << ":" << n_line << ": " << line << '\n'
+                              << Colors::RESET;
+                    continue;
+                }
+                line.erase(0, 1);              // Remove leading quote
+                line.erase(line.length() - 1); // Remove trailing quote
+                if (_rep_map.erase(to_wstr(line)) == 0) {
+                    std::cerr << Colors::YELLOW << "Warning: No rule found to erase at " << file_path
+                              << ":" << n_line << ": " << line << '\n'
+                              << Colors::RESET;
+                }
+                n_rule++;
+                continue;
+            }
+
+            // Clear format: "--"
+            if (line.compare("--") == 0) {
+                _rep_map.clear(); // Clear all rules
+                n_rule++;
+                continue;
+            }
+
+            // Add format: "from" -> "to"
             size_t arrow_pos = line.find(" -> ");
             if (arrow_pos == std::string::npos) {
                 std::cerr << Colors::YELLOW << "Warning: Invalid format at " << file_path
@@ -105,6 +133,14 @@ namespace punp {
 
             std::string from_str = from.substr(1, from.length() - 2);
             std::string to_str = to.substr(1, to.length() - 2);
+
+            // If from == to, skip the rule
+            if (from_str == to_str) {
+                std::cerr << Colors::YELLOW << "Warning: Skipping rule with identical 'from' and 'to' at "
+                          << file_path << ":" << n_line << ": " << line << '\n'
+                          << Colors::RESET;
+                continue;
+            }
 
             // Convert to wide strings
             std::wstring wf = to_wstr(from_str);
