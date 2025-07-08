@@ -1,3 +1,9 @@
+# Rules:
+# - Comment: # This is a comment
+# - Add rule: "old text" -> "new text"
+# - Delete rule: - "old text"
+# - Clear rules: --
+
 # Default rules
 "。" -> ". "
 "，" -> ", "
