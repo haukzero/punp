@@ -28,11 +28,6 @@ namespace punp {
         size_t n_rep = 0;
     };
 
-    // Configuration for page processing
-    struct PageProcessingConfig {
-        size_t page_size = 16 * 1024; // 16KB per page
-    };
-
     // File content structure
     struct FileContent {
         std::string filename;

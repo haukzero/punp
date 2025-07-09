@@ -67,11 +67,13 @@ namespace punp {
                 _tasks.pop();
             }
 
+            _active_threads.fetch_add(1);
             try {
                 task();
             } catch (...) {
                 // Swallow exceptions to prevent thread termination
             }
+            _active_threads.fetch_sub(1);
         }
     }
 

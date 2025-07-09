@@ -19,6 +19,7 @@ namespace punp {
         std::mutex _queue_mtx;
         std::condition_variable _condition;
         std::atomic<bool> _stop;
+        std::atomic<size_t> _active_threads{0};
 
         void worker_thread();
 
@@ -34,6 +35,9 @@ namespace punp {
         auto submit(F &&f, Args &&...args) -> std::future<decltype(f(args...))>;
 
         size_t thread_cnt() const noexcept { return _workers.size(); }
+
+        size_t idle_threads() const noexcept { return _workers.size() - _active_threads.load(); }
+        bool has_idle_threads() const noexcept { return idle_threads() > 0 && !_stop.load(); }
 
         void shutdown();
     };

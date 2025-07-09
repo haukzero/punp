@@ -3,7 +3,7 @@
 namespace punp {
 
     namespace Version {
-        constexpr const char *VERSION = "2.2.0";
+        constexpr const char *VERSION = "2.2.1";
     } // namespace Version
 
     namespace RuleFile {
@@ -19,5 +19,9 @@ namespace punp {
         constexpr const char *MAGENTA = "\033[35m";
         constexpr const char *CYAN = "\033[36m";
     }
+
+    namespace PageConfig {
+        constexpr const size_t SIZE = 16 * 1024; // 16KB per page
+    } // namespace PageConfig
 
 } // namespace punp

@@ -1,4 +1,5 @@
 #include "file_processor.h"
+#include "common.h"
 #include "config_manager.h"
 #include "thread_pool.h"
 #include <algorithm>
@@ -53,7 +54,9 @@ namespace punp {
             loading_threads = std::min(loading_threads, hw_max_thread);
         }
 
-        ThreadPool thread_pool(loading_threads);
+        auto thread_pool = std::make_shared<ThreadPool>(loading_threads);
+        // Store thread pool reference for writeback thread to use
+        const_cast<FileProcessor *>(this)->_thread_pool_ptr = thread_pool;
 
         // Submit file loading tasks
         std::vector<std::future<std::pair<std::shared_ptr<FileContent>, std::vector<Page>>>> loading_futures;
@@ -61,7 +64,7 @@ namespace punp {
 
         for (size_t i = 0; i < file_paths.size(); ++i) {
             loading_futures.emplace_back(
-                thread_pool.submit([this, &file_paths, i]() -> std::pair<std::shared_ptr<FileContent>, std::vector<Page>> {
+                thread_pool->submit([this, &file_paths, i]() -> std::pair<std::shared_ptr<FileContent>, std::vector<Page>> {
                     auto file_content = load_file_content(file_paths[i]);
                     if (file_content) {
                         auto pages = create_pages(file_content);
@@ -98,7 +101,7 @@ namespace punp {
             n_thread = std::min(n_thread, hw_max_thread);
         }
         // Scaling the thread pool to the optimal number of threads
-        thread_pool.scaling(n_thread - thread_pool.thread_cnt());
+        thread_pool->scaling(n_thread - thread_pool->thread_cnt());
 
         // Submit all pages to thread pool
         std::vector<std::vector<std::future<PageResult>>> page_futures;
@@ -110,7 +113,7 @@ namespace punp {
             cur_page_future.reserve(pages.size());
 
             for (const auto &page : pages) {
-                cur_page_future.emplace_back(thread_pool.submit([this, page]() {
+                cur_page_future.emplace_back(thread_pool->submit([this, page]() {
                     return process_page(page);
                 }));
             }
@@ -159,7 +162,10 @@ namespace punp {
         }
 
         // Shutdown the thread pool
-        thread_pool.shutdown();
+        thread_pool->shutdown();
+
+        // Clear thread pool reference
+        const_cast<FileProcessor *>(this)->_thread_pool_ptr.reset();
 
         return results;
     }
@@ -200,7 +206,7 @@ namespace punp {
         const auto &content = fc_ptr->content;
         size_t content_size = content.size();
 
-        if (content_size <= _page_config.page_size) {
+        if (content_size <= PageConfig::SIZE) {
             // Single page for small files
             Page sp(fc_ptr, 0, 0, content_size);
             pages.emplace_back(std::move(sp));
@@ -215,7 +221,7 @@ namespace punp {
         size_t start_pos = 0;
 
         while (start_pos < content_size) {
-            size_t end_pos = std::min(start_pos + _page_config.page_size, content_size);
+            size_t end_pos = std::min(start_pos + PageConfig::SIZE, content_size);
 
             // Try to find a good boundary (line break or space)
             if (end_pos < content_size) {
@@ -293,7 +299,29 @@ namespace punp {
                 break;
             }
 
-            if (!_writeback_queue.empty()) {
+            auto thread_pool = _thread_pool_ptr;
+
+            // If thread pool is available and has idle threads, try to batch process
+            if (thread_pool && thread_pool->has_idle_threads() && !_writeback_queue.empty()) {
+                std::vector<WritebackNotification> batch;
+                size_t idle_count = thread_pool->idle_threads();
+
+                // Extract up to idle_count items from queue
+                while (!_writeback_queue.empty() && batch.size() < idle_count) {
+                    batch.emplace_back(_writeback_queue.front());
+                    _writeback_queue.pop();
+                }
+
+                lock.unlock();
+
+                // Submit batch to thread pool
+                for (const auto &notification : batch) {
+                    thread_pool->submit([this, notification]() {
+                        writeback(notification.file_content, notification.total_replacements);
+                    });
+                }
+            } else if (!_writeback_queue.empty()) {
+                // Process single item locally
                 auto notification = _writeback_queue.front();
                 _writeback_queue.pop();
                 lock.unlock();

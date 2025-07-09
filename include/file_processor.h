@@ -16,8 +16,8 @@ namespace punp {
     class FileProcessor {
     private:
         const ConfigManager &_config_manager;
-        PageProcessingConfig _page_config;
 
+        mutable std::shared_ptr<ThreadPool> _thread_pool_ptr;
         std::queue<WritebackNotification> _writeback_queue;
         std::mutex _writeback_mtx;
         std::condition_variable _writeback_cv;
