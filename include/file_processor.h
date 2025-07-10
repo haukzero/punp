@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ac_automaton.h"
+#include "thread_pool.h"
 #include "types.h"
 #include <atomic>
 #include <condition_variable>
@@ -12,13 +13,12 @@
 namespace punp {
 
     class ConfigManager;
-    class ThreadPool;
 
     class FileProcessor {
     private:
         ACAutomaton _ac_automaton;
+        ThreadPool _thread_pool;
 
-        mutable std::shared_ptr<ThreadPool> _thread_pool_ptr;
         std::queue<WritebackNotification> _writeback_queue;
         std::mutex _writeback_mtx;
         std::condition_variable _writeback_cv;
@@ -47,7 +47,7 @@ namespace punp {
 
         std::vector<ProcessingResult> process_files(
             const std::vector<std::string> &file_paths,
-            size_t max_threads = 0) const;
+            size_t max_threads = 0);
     };
 
 } // namespace punp

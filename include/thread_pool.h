@@ -29,7 +29,7 @@ namespace punp {
         explicit ThreadPool(size_t num_threads = 0);
         ~ThreadPool();
 
-        void scaling(size_t n_inc);
+        void scaling(size_t new_size);
 
         template <typename F, typename... Args>
         auto submit(F &&f, Args &&...args) -> std::future<decltype(f(args...))>;

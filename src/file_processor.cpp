@@ -12,7 +12,10 @@
 
 namespace punp {
 
-    FileProcessor::FileProcessor(const ConfigManager &config_manager) : _writeback_stop(false) {
+    FileProcessor::FileProcessor(const ConfigManager &config_manager)
+        : _thread_pool(ThreadPool(1)),
+          _writeback_stop(false) {
+
         // Initialize the AC automaton with the replacement map
         _ac_automaton.build_from_map(config_manager.replacement_map());
         // Start the writeback thread
@@ -30,11 +33,13 @@ namespace punp {
         if (_writeback_thread.joinable()) {
             _writeback_thread.join();
         }
+        // Shutdown the thread pool
+        _thread_pool.shutdown();
     }
 
     std::vector<ProcessingResult> FileProcessor::process_files(
         const std::vector<std::string> &file_paths,
-        size_t max_threads) const {
+        size_t max_threads) {
 
         if (file_paths.empty()) {
             return {};
@@ -55,9 +60,8 @@ namespace punp {
             loading_threads = std::min(loading_threads, hw_max_thread);
         }
 
-        auto thread_pool = std::make_shared<ThreadPool>(loading_threads);
-        // Store thread pool reference for writeback thread to use
-        const_cast<FileProcessor *>(this)->_thread_pool_ptr = thread_pool;
+        // Scaling the thread pool for loading files
+        _thread_pool.scaling(loading_threads);
 
         // Submit file loading tasks
         std::vector<std::future<std::pair<std::shared_ptr<FileContent>, std::vector<Page>>>> loading_futures;
@@ -65,7 +69,7 @@ namespace punp {
 
         for (size_t i = 0; i < file_paths.size(); ++i) {
             loading_futures.emplace_back(
-                thread_pool->submit([this, &file_paths, i]() -> std::pair<std::shared_ptr<FileContent>, std::vector<Page>> {
+                _thread_pool.submit([this, &file_paths, i]() -> std::pair<std::shared_ptr<FileContent>, std::vector<Page>> {
                     auto file_content = load_file_content(file_paths[i]);
                     if (file_content) {
                         auto pages = create_pages(file_content);
@@ -102,7 +106,7 @@ namespace punp {
             n_thread = std::min(n_thread, hw_max_thread);
         }
         // Scaling the thread pool to the optimal number of threads
-        thread_pool->scaling(n_thread - thread_pool->thread_cnt());
+        _thread_pool.scaling(n_thread);
 
         // Submit all pages to thread pool
         std::vector<std::vector<std::future<PageResult>>> page_futures;
@@ -114,7 +118,7 @@ namespace punp {
             cur_page_future.reserve(pages.size());
 
             for (const auto &page : pages) {
-                cur_page_future.emplace_back(thread_pool->submit([this, page]() {
+                cur_page_future.emplace_back(_thread_pool.submit([this, page]() {
                     return process_page(page);
                 }));
             }
@@ -161,12 +165,6 @@ namespace punp {
 
             results.emplace_back(result);
         }
-
-        // Shutdown the thread pool
-        thread_pool->shutdown();
-
-        // Clear thread pool reference
-        const_cast<FileProcessor *>(this)->_thread_pool_ptr.reset();
 
         return results;
     }
@@ -300,12 +298,10 @@ namespace punp {
                 break;
             }
 
-            auto thread_pool = _thread_pool_ptr;
-
             // If thread pool is available and has idle threads, try to batch process
-            if (thread_pool && thread_pool->has_idle_threads() && !_writeback_queue.empty()) {
+            if (_thread_pool.has_idle_threads() && !_writeback_queue.empty()) {
                 std::vector<WritebackNotification> batch;
-                size_t idle_count = thread_pool->idle_threads();
+                size_t idle_count = _thread_pool.idle_threads();
 
                 // Extract up to idle_count items from queue
                 while (!_writeback_queue.empty() && batch.size() < idle_count) {
@@ -317,7 +313,7 @@ namespace punp {
 
                 // Submit batch to thread pool
                 for (const auto &notification : batch) {
-                    thread_pool->submit([this, notification]() {
+                    _thread_pool.submit([this, notification]() {
                         writeback(notification.file_content, notification.total_replacements);
                     });
                 }
