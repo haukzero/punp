@@ -5,9 +5,6 @@
 namespace punp {
     class ACAutomaton {
     private:
-        using MatchResult = std::tuple<int, int, std::wstring>; // (end_index, start_index, replacement_string)
-        using MatchResultVec = std::vector<MatchResult>;
-
         struct Node {
             std::unordered_map<wchar_t, Node *> children;
             Node *fail = nullptr;
