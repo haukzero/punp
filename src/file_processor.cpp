@@ -12,8 +12,9 @@
 
 namespace punp {
 
-    FileProcessor::FileProcessor(const ConfigManager &config_manager)
-        : _config_manager(config_manager), _writeback_stop(false) {
+    FileProcessor::FileProcessor(const ConfigManager &config_manager) : _writeback_stop(false) {
+        // Initialize the AC automaton with the replacement map
+        _ac_automaton.build_from_map(config_manager.replacement_map());
         // Start the writeback thread
         _writeback_thread = std::thread(&FileProcessor::writeback_worker, this);
     }
@@ -377,30 +378,7 @@ namespace punp {
     }
 
     size_t FileProcessor::apply_replace(std::wstring &text) const {
-        auto &rep_map = _config_manager.replacement_map();
-        if (rep_map.empty()) {
-            return 0;
-        }
-
-        size_t n_rep_total = 0;
-
-        for (const auto &[from, to] : rep_map) {
-            if (from.empty())
-                continue;
-
-            size_t pos = 0;
-            size_t n_rep = 0;
-
-            while ((pos = text.find(from, pos)) != std::wstring::npos) {
-                text.replace(pos, from.length(), to);
-                pos += to.length();
-                n_rep++;
-            }
-
-            n_rep_total += n_rep;
-        }
-
-        return n_rep_total;
+        return _ac_automaton.apply_replace(text);
     }
 
     bool FileProcessor::is_text_file(const std::string &filePath) const {

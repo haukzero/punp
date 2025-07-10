@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ac_automaton.h"
 #include "types.h"
 #include <atomic>
 #include <condition_variable>
@@ -15,7 +16,7 @@ namespace punp {
 
     class FileProcessor {
     private:
-        const ConfigManager &_config_manager;
+        ACAutomaton _ac_automaton;
 
         mutable std::shared_ptr<ThreadPool> _thread_pool_ptr;
         std::queue<WritebackNotification> _writeback_queue;
