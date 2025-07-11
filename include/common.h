@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string>
+
 namespace punp {
 
     namespace Version {
@@ -23,5 +25,11 @@ namespace punp {
     namespace PageConfig {
         constexpr const size_t SIZE = 16 * 1024; // 16KB per page
     } // namespace PageConfig
+
+    namespace StoreDir {
+        inline const char *_HOME = std::getenv("HOME");
+        inline const std::string ROOT_DIR = std::string(_HOME) + "/.local";
+        inline const std::string CONFIG_DIR = ROOT_DIR + "/share/punp/";
+    } // namespace StoreDir
 
 } // namespace punp

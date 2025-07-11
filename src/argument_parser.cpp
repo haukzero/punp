@@ -85,7 +85,7 @@ namespace punp {
         std::cout << Colors::GREEN << "Configuration:\n";
         std::cout << Colors::CYAN << "  The tool looks for '" << RuleFile::NAME << "' in:\n";
         std::cout << Colors::CYAN << "    1. Current directory (higher priority)\n";
-        std::cout << Colors::CYAN << "    2. ~/.local/share/punp/ (lower priority)\n";
+        std::cout << Colors::CYAN << "    2. " << StoreDir::CONFIG_DIR << " (lower priority)\n";
         std::cout << Colors::CYAN << "  Rules in higher priority locations override those in lower priority locations.\n"
                   << Colors::RESET;
     }

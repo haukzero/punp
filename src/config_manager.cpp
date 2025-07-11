@@ -14,9 +14,9 @@ namespace punp {
 
         if (config_files.empty()) {
             std::cerr << Colors::RED << "Error: No configuration files found.\n";
-            std::cerr << "Please create a '.punctuation_rules' file in:\n";
+            std::cerr << "Please create a '" << RuleFile::NAME << "' file in:\n";
             std::cerr << "  - Current directory, or\n";
-            std::cerr << "  - User config directory (~/.config/punctuation_processor/)\n"
+            std::cerr << "  - User config directory (" << StoreDir::CONFIG_DIR << ")\n"
                       << Colors::RESET;
             return false;
         }
@@ -45,11 +45,7 @@ namespace punp {
         std::vector<std::string> config_files;
 
         // Check user config directory first (lower priority)
-        const char *home_dir = std::getenv("HOME");
-        if (home_dir) {
-            std::string user_config = std::string(home_dir) + "/.local/share/punp/" + RuleFile::NAME;
-            config_files.emplace_back(user_config);
-        }
+        config_files.emplace_back(StoreDir::CONFIG_DIR + RuleFile::NAME);
 
         // Check current directory (higher priority)
         config_files.emplace_back(RuleFile::NAME);
