@@ -301,10 +301,9 @@ namespace punp {
             // If thread pool is available and has idle threads, try to batch process
             if (_thread_pool.has_idle_threads() && !_writeback_queue.empty()) {
                 std::vector<WritebackNotification> batch;
-                size_t idle_count = _thread_pool.idle_threads();
 
                 // Extract up to idle_count items from queue
-                while (!_writeback_queue.empty() && batch.size() < idle_count) {
+                while (!_writeback_queue.empty() && batch.size() < _thread_pool.idle_threads()) {
                     batch.emplace_back(_writeback_queue.front());
                     _writeback_queue.pop();
                 }
