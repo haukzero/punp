@@ -8,7 +8,7 @@
 #include <fstream>
 #include <future>
 #include <iostream>
-#include <locale>
+#include <sys/stat.h>
 
 namespace punp {
 
@@ -177,6 +177,13 @@ namespace punp {
                 return nullptr;
             }
 
+            // Get file size for pre-allocation hint
+            struct stat stat_buf;
+            size_t file_size = 0;
+            if (stat(file_path.c_str(), &stat_buf) == 0) {
+                file_size = static_cast<size_t>(stat_buf.st_size);
+            }
+
             std::wifstream input_file(file_path);
             if (!input_file) {
                 return nullptr;
@@ -184,9 +191,19 @@ namespace punp {
             input_file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
 
             std::wstring content;
+            if (file_size > 0) {
+                content.reserve(file_size);
+            }
+
             std::wstring line;
+            bool first_line = true;
+
             while (std::getline(input_file, line)) {
-                content += line + L"\n";
+                if (!first_line) {
+                    content += L'\n';
+                }
+                content += line;
+                first_line = false;
             }
             input_file.close();
 
