@@ -18,7 +18,7 @@ namespace punp {
 
         std::vector<std::string> find_files() const;
         bool parse(const std::string &file_path);
-        std::wstring to_wstr(const std::string &str) const;
+        text_t to_tstr(const std::string &str) const;
 
     public:
         ConfigManager() = default;

@@ -2,6 +2,7 @@
 #include "common.h"
 #include "config_manager.h"
 #include "thread_pool.h"
+#include "types.h"
 #include <algorithm>
 #include <codecvt>
 #include <cstddef>
@@ -74,6 +75,9 @@ namespace punp {
                 _thread_pool.submit([this, &file_paths, i]() -> std::pair<std::shared_ptr<FileContent>, std::vector<Page>> {
                     auto file_content = load_file_content(file_paths[i]);
                     if (file_content) {
+                        // Build global protected intervals for the entire file
+                        file_content->protected_intervals = _ac_automaton.build_global_protected_intervals(file_content->content);
+
                         auto pages = create_pages(file_content);
                         return std::make_pair(file_content, std::move(pages));
                     } else {
@@ -190,12 +194,12 @@ namespace punp {
             }
             input_file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
 
-            std::wstring content;
+            text_t content;
             if (file_size > 0) {
                 content.reserve(file_size);
             }
 
-            std::wstring line;
+            text_t line;
             bool first_line = true;
 
             while (std::getline(input_file, line)) {
@@ -222,6 +226,7 @@ namespace punp {
         }
 
         const auto &content = fc_ptr->content;
+        const auto &protected_intervals = fc_ptr->protected_intervals;
         size_t content_size = content.size();
 
         if (content_size <= PageConfig::SIZE) {
@@ -246,12 +251,30 @@ namespace punp {
                 size_t search_start = std::max(start_pos, end_pos - 100);
                 size_t line_break_pos = content.rfind(L'\n', end_pos);
 
-                if (line_break_pos != std::wstring::npos && line_break_pos > search_start) {
+                if (line_break_pos != text_t::npos && line_break_pos > search_start) {
                     end_pos = line_break_pos + 1;
                 } else {
                     size_t space_pos = content.rfind(L' ', end_pos);
-                    if (space_pos != std::wstring::npos && space_pos > search_start) {
+                    if (space_pos != text_t::npos && space_pos > search_start) {
                         end_pos = space_pos + 1;
+                    }
+                }
+
+                // NOTE: Check if end_pos falls inside a protected region
+                // If so, adjust to avoid splitting the protected region
+                for (const auto &interval : protected_intervals) {
+                    // If end_pos is inside a protected region [start_first, end_last]
+                    if (interval.start_first < end_pos && end_pos <= interval.end_last) {
+                        // Case 1: Protected region starts before end_pos
+                        // Move end_pos to before the protected region starts
+                        if (interval.start_first > start_pos) {
+                            end_pos = interval.start_first;
+                        } else {
+                            // Case 2: Protected region started before this page
+                            // Move end_pos to after the protected region ends
+                            end_pos = interval.skip_to();
+                        }
+                        break;
                     }
                 }
             }
@@ -279,7 +302,9 @@ namespace punp {
             result.processed_content = full_content.substr(page.start_pos, page.end_pos - page.start_pos);
 
             // Apply replacements
-            result.n_rep = apply_replace(result.processed_content);
+            result.n_rep = apply_replace(result.processed_content,
+                                         page.start_pos,
+                                         page.f_ptr->protected_intervals);
 
             page.f_ptr->total_replacements.fetch_add(result.n_rep);
 
@@ -358,7 +383,7 @@ namespace punp {
                 return true;
             }
 
-            std::wstring complete_content;
+            text_t complete_content;
             {
                 std::lock_guard<std::mutex> lock(file_content->processed_mutex);
 
@@ -391,8 +416,9 @@ namespace punp {
         }
     }
 
-    size_t FileProcessor::apply_replace(std::wstring &text) const {
-        return _ac_automaton.apply_replace(text);
+    size_t FileProcessor::apply_replace(text_t &text, const size_t page_offset,
+                                        const GlobalProtectedIntervals &global_intervals) const {
+        return _ac_automaton.apply_replace(text, page_offset, global_intervals);
     }
 
     bool FileProcessor::is_text_file(const std::string &filePath) const {

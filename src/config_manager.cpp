@@ -1,10 +1,9 @@
 #include "config_manager.h"
 #include "common.h"
-#include <codecvt>
+#include "types.h"
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
-#include <locale>
 #include <vector>
 
 namespace punp {
@@ -137,8 +136,8 @@ namespace punp {
         }
 
         // Convert to wide strings
-        std::wstring wf = to_wstr(from_str);
-        std::wstring wt = to_wstr(to_str);
+        text_t wf = to_tstr(from_str);
+        text_t wt = to_tstr(to_str);
 
         // Add or update rule (later rules override earlier ones)
         _rep_map[wf] = wt;
@@ -159,7 +158,7 @@ namespace punp {
         }
         content.erase(0, 1);                 // Remove leading quote
         content.erase(content.length() - 1); // Remove trailing quote
-        if (_rep_map.erase(to_wstr(content)) == 0) {
+        if (_rep_map.erase(to_tstr(content)) == 0) {
             std::cerr << Colors::YELLOW << "Warning: No rule found to erase at " << file_path
                       << ":" << lno << ": " << line << '\n'
                       << Colors::RESET;
@@ -203,19 +202,19 @@ namespace punp {
         std::string end_str = end_marker.substr(1, end_marker.length() - 2);
 
         // Convert to wide strings and add to protected regions
-        std::wstring wstart = to_wstr(start_str);
-        std::wstring wend = to_wstr(end_str);
+        text_t wstart = to_tstr(start_str);
+        text_t wend = to_tstr(end_str);
         _protected_regions.emplace_back(wstart, wend);
         return true;
     }
 
-    std::wstring ConfigManager::to_wstr(const std::string &str) const {
-        std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    text_t ConfigManager::to_tstr(const std::string &str) const {
+        convert_t converter;
         try {
             return converter.from_bytes(str);
         } catch (const std::exception &) {
             // Fallback for invalid UTF-8
-            std::wstring result;
+            text_t result;
             result.reserve(str.length());
             for (char c : str) {
                 result.push_back(static_cast<wchar_t>(static_cast<unsigned char>(c)));

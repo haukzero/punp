@@ -25,7 +25,8 @@ namespace punp {
         std::atomic<bool> _writeback_stop{false};
         std::thread _writeback_thread;
 
-        size_t apply_replace(std::wstring &text) const;
+        size_t apply_replace(text_t &text, const size_t page_offset,
+                             const GlobalProtectedIntervals &global_intervals) const;
         bool is_text_file(const std::string &file_path) const;
 
         // Load file content into FileContent structure

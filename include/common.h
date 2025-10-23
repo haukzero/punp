@@ -5,7 +5,7 @@
 namespace punp {
 
     namespace Version {
-        constexpr const char *VERSION = "2.2.4";
+        constexpr const char *VERSION = "2.2.5";
     } // namespace Version
 
     namespace RuleFile {
