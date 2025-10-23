@@ -13,6 +13,10 @@ namespace punp {
     using ReplacementRule = std::pair<std::wstring, std::wstring>;
     using ReplacementMap = std::unordered_map<std::wstring, std::wstring>;
 
+    // Protected region definition (start marker, end marker)
+    using ProtectedRegion = std::pair<std::wstring, std::wstring>;
+    using ProtectedRegions = std::vector<ProtectedRegion>;
+
     // Configuration for processing
     struct ProcessingConfig {
         bool recursive = false;
