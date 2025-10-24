@@ -32,7 +32,7 @@ namespace punp {
         void scaling(size_t new_size);
 
         template <typename F, typename... Args>
-        auto submit(F &&f, Args &&...args) -> std::future<decltype(f(args...))>;
+        auto submit(F &&f, Args &&...args) -> std::future<std::invoke_result_t<F, Args...>>;
 
         size_t thread_cnt() const noexcept { return _workers.size(); }
 
@@ -43,11 +43,15 @@ namespace punp {
     };
 
     template <typename F, typename... Args>
-    auto ThreadPool::submit(F &&f, Args &&...args) -> std::future<decltype(f(args...))> {
-        using return_type = decltype(f(args...));
+    auto ThreadPool::submit(F &&f, Args &&...args) -> std::future<std::invoke_result_t<F, Args...>> {
+        using return_type = std::invoke_result_t<F, Args...>;
+        using ArgsTuple = std::tuple<std::decay_t<Args>...>;
 
+        auto args_tuple = ArgsTuple(std::forward<Args>(args)...);
         auto task = std::make_shared<std::packaged_task<return_type()>>(
-            std::bind(std::forward<F>(f), std::forward<Args>(args)...));
+            [f = std::forward<F>(f), args = std::move(args_tuple)]() mutable -> return_type {
+                return std::apply(std::forward<F>(f), std::move(args));
+            });
 
         std::future<return_type> result = task->get_future();
 
