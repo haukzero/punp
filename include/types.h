@@ -6,6 +6,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -13,6 +14,7 @@ namespace punp {
 
     using text_t = std::wstring;
     using convert_t = std::wstring_convert<std::codecvt_utf8<wchar_t>>;
+    using view_t = std::wstring_view;
 
     // Type definitions
     using ReplacementRule = std::pair<text_t, text_t>;

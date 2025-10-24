@@ -101,35 +101,36 @@ namespace punp {
 
     bool ConfigManager::parse_add_rule(const std::string &file_path, const int lno, const std::string &line) {
         // Add format: "from" -> "to"
-        size_t arrow_pos = line.find(" -> ");
-        if (arrow_pos == std::string::npos) {
+        std::string_view line_view(line);
+        size_t arrow_pos = line_view.find(" -> ");
+        if (arrow_pos == std::string_view::npos) {
             return false;
         }
 
         // Extract from and to parts
-        std::string from = line.substr(0, arrow_pos);
-        std::string to = line.substr(arrow_pos + 4);
+        std::string_view from_view = line_view.substr(0, arrow_pos);
+        std::string_view to_view = line_view.substr(arrow_pos + 4);
 
         // Remove quotes and extract content
-        if (from.length() < 2 || from.front() != '"' || from.back() != '"') {
+        if (from_view.length() < 2 || from_view.front() != '"' || from_view.back() != '"') {
             std::cerr << Colors::YELLOW << "Warning: Invalid 'from' format at " << file_path
                       << ":" << lno << '\n'
                       << Colors::RESET;
             return false;
         }
 
-        if (to.length() < 2 || to.front() != '"' || to.back() != '"') {
+        if (to_view.length() < 2 || to_view.front() != '"' || to_view.back() != '"') {
             std::cerr << Colors::YELLOW << "Warning: Invalid 'to' format at " << file_path
                       << ":" << lno << '\n'
                       << Colors::RESET;
             return false;
         }
 
-        std::string from_str = from.substr(1, from.length() - 2);
-        std::string to_str = to.substr(1, to.length() - 2);
+        std::string_view from_str_view = from_view.substr(1, from_view.length() - 2);
+        std::string_view to_str_view = to_view.substr(1, to_view.length() - 2);
 
         // If from == to, skip the rule
-        if (from_str == to_str) {
+        if (from_str_view == to_str_view) {
             std::cerr << Colors::YELLOW << "Warning: Skipping rule with identical 'from' and 'to' at "
                       << file_path << ":" << lno << ": " << line << '\n'
                       << Colors::RESET;
@@ -137,8 +138,8 @@ namespace punp {
         }
 
         // Convert to wide strings
-        text_t wf = to_tstr(from_str);
-        text_t wt = to_tstr(to_str);
+        text_t wf = to_tstr(std::string(from_str_view));
+        text_t wt = to_tstr(std::string(to_str_view));
 
         // Add or update rule (later rules override earlier ones)
         _rep_map[wf] = wt;
@@ -147,19 +148,19 @@ namespace punp {
 
     bool ConfigManager::parse_erase_rule(const std::string &file_path, const int lno, const std::string &line) {
         // Erase format: - "from"
-        if (line.compare(0, 2, "- ") != 0) {
+        std::string_view line_view(line);
+        if (line_view.substr(0, 2) != "- ") {
             return false;
         }
-        std::string content = line.substr(2);
-        if (content.empty() || content[0] != '"' || content.back() != '"') {
+        std::string_view content_view = line_view.substr(2);
+        if (content_view.empty() || content_view[0] != '"' || content_view.back() != '"') {
             std::cerr << Colors::YELLOW << "Warning: Invalid format at " << file_path
                       << ":" << lno << ": " << line << '\n'
                       << Colors::RESET;
             return false;
         }
-        content.erase(0, 1);                 // Remove leading quote
-        content.erase(content.length() - 1); // Remove trailing quote
-        if (_rep_map.erase(to_tstr(content)) == 0) {
+        std::string_view inner_view = content_view.substr(1, content_view.length() - 2);
+        if (_rep_map.erase(to_tstr(std::string(inner_view))) == 0) {
             std::cerr << Colors::YELLOW << "Warning: No rule found to erase at " << file_path
                       << ":" << lno << ": " << line << '\n'
                       << Colors::RESET;
@@ -169,11 +170,12 @@ namespace punp {
 
     bool ConfigManager::parse_protected_region(const std::string &file_path, const int lno, const std::string &line) {
         // Protected region format: !"start" ~ "end"
-        if (line.compare(0, 2, "!\"") != 0) {
+        std::string_view line_view(line);
+        if (line_view.substr(0, 2) != "!\"") {
             return false;
         }
-        size_t tilde_pos = line.find(" ~ ");
-        if (tilde_pos == std::string::npos) {
+        size_t tilde_pos = line_view.find(" ~ ");
+        if (tilde_pos == std::string_view::npos) {
             std::cerr << Colors::YELLOW << "Warning: Invalid protected region format at " << file_path
                       << ":" << lno << ": " << line << '\n'
                       << Colors::RESET;
@@ -181,30 +183,30 @@ namespace punp {
         }
 
         // Extract start and end markers
-        std::string start_marker = line.substr(1, tilde_pos - 1);
-        std::string end_marker = line.substr(tilde_pos + 3);
+        std::string_view start_marker_view = line_view.substr(1, tilde_pos - 1);
+        std::string_view end_marker_view = line_view.substr(tilde_pos + 3);
 
         // Remove quotes
-        if (start_marker.length() < 2 || start_marker.front() != '"' || start_marker.back() != '"') {
+        if (start_marker_view.length() < 2 || start_marker_view.front() != '"' || start_marker_view.back() != '"') {
             std::cerr << Colors::YELLOW << "Warning: Invalid start marker format at " << file_path
                       << ":" << lno << '\n'
                       << Colors::RESET;
             return false;
         }
 
-        if (end_marker.length() < 2 || end_marker.front() != '"' || end_marker.back() != '"') {
+        if (end_marker_view.length() < 2 || end_marker_view.front() != '"' || end_marker_view.back() != '"') {
             std::cerr << Colors::YELLOW << "Warning: Invalid end marker format at " << file_path
                       << ":" << lno << '\n'
                       << Colors::RESET;
             return false;
         }
 
-        std::string start_str = start_marker.substr(1, start_marker.length() - 2);
-        std::string end_str = end_marker.substr(1, end_marker.length() - 2);
+        std::string_view start_str_view = start_marker_view.substr(1, start_marker_view.length() - 2);
+        std::string_view end_str_view = end_marker_view.substr(1, end_marker_view.length() - 2);
 
         // Convert to wide strings and add to protected regions
-        text_t wstart = to_tstr(start_str);
-        text_t wend = to_tstr(end_str);
+        text_t wstart = to_tstr(std::string(start_str_view));
+        text_t wend = to_tstr(std::string(end_str_view));
         if (wstart.empty() || wend.empty()) {
             std::cerr << Colors::YELLOW << "Warning: Empty start or end marker at " << file_path
                       << ":" << lno << ": " << line << '\n'

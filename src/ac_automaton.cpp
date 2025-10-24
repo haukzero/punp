@@ -95,7 +95,7 @@ namespace punp {
                 const text_t &start_marker = region_ptrs.first;
 
                 if (pos + start_marker.length() <= text_len) {
-                    if (text.compare(pos, start_marker.length(), start_marker) == 0) {
+                    if (view_t(text.data() + pos, start_marker.length()) == view_t(start_marker)) {
                         matched_start = &start_marker;
                         matched_end = &region_ptrs.second;
                         found_start = true;
