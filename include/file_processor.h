@@ -35,6 +35,9 @@ namespace punp {
         // Create pages from file content
         std::vector<Page> create_pages(std::shared_ptr<FileContent> file_content) const;
 
+        // Pre-process: load file + create pages
+        std::pair<std::shared_ptr<FileContent>, std::vector<Page>> preprocess_file(const std::string &file_path) const;
+
         // Process a single page
         PageResult process_page(const Page &page) const;
 

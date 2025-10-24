@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <thread>
 
 namespace punp {
 
@@ -21,6 +22,11 @@ namespace punp {
         constexpr const char *MAGENTA = "\033[35m";
         constexpr const char *CYAN = "\033[36m";
     }
+
+    namespace Hardware {
+        const size_t HW_MAX_THREADS = std::thread::hardware_concurrency();
+        const size_t AUTO_NUM_THREADS = static_cast<size_t>(HW_MAX_THREADS * 1.5);
+    } // namespace Hardware
 
     namespace PageConfig {
         constexpr const size_t SIZE = 16 * 1024; // 16KB per page

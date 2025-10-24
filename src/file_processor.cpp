@@ -47,51 +47,45 @@ namespace punp {
         if (file_paths.empty()) {
             return {};
         }
+        size_t num_files = file_paths.size();
 
-        size_t hw_max_thread = std::thread::hardware_concurrency();
-        if (hw_max_thread > 2) {
-            hw_max_thread -= 2; // Reserve tow thread for the main thread and writeback thread
-        }
+        std::vector<std::shared_ptr<FileContent>> file_contents(num_files);
+        std::vector<std::vector<Page>> file_pages(num_files);
 
-        std::vector<std::shared_ptr<FileContent>> file_contents(file_paths.size());
-        std::vector<std::vector<Page>> file_pages(file_paths.size());
-        size_t loading_threads = max_threads;
+        size_t num_threads = max_threads;
         if (max_threads == 0) {
-            loading_threads = std::min(file_paths.size(), hw_max_thread);
-            loading_threads = std::max(loading_threads, static_cast<size_t>(1));
+            num_threads = std::min(num_files * 2, Hardware::AUTO_NUM_THREADS);
+            num_threads = std::max(num_threads, static_cast<size_t>(1));
         } else {
-            loading_threads = std::min(loading_threads, hw_max_thread);
+            num_threads = std::min(num_threads, Hardware::AUTO_NUM_THREADS);
         }
-
-        // Scaling the thread pool for loading files
-        _thread_pool.scaling(loading_threads);
+        _thread_pool.scaling(num_threads);
 
         // Submit file loading tasks
-        std::vector<std::future<std::pair<std::shared_ptr<FileContent>, std::vector<Page>>>> loading_futures;
-        loading_futures.reserve(file_paths.size());
+        std::vector<std::future<std::pair<std::shared_ptr<FileContent>, std::vector<Page>>>> loading_futures(num_files);
 
-        for (size_t i = 0; i < file_paths.size(); ++i) {
-            loading_futures.emplace_back(
-                _thread_pool.submit([this, &file_paths, i]() -> std::pair<std::shared_ptr<FileContent>, std::vector<Page>> {
-                    auto file_content = load_file_content(file_paths[i]);
-                    if (file_content) {
-                        // Build global protected intervals for the entire file
-                        file_content->protected_intervals = _ac_automaton.build_global_protected_intervals(file_content->content);
-
-                        auto pages = create_pages(file_content);
-                        return std::make_pair(file_content, std::move(pages));
-                    } else {
-                        return std::make_pair(nullptr, std::vector<Page>{});
-                    }
-                }));
+        for (size_t i = 0; i < num_files; ++i) {
+            loading_futures[i] = _thread_pool.submit([this, file_path = file_paths[i]]() {
+                return preprocess_file(file_path);
+            });
         }
 
-        // Collect loading results
-        for (size_t i = 0; i < file_paths.size(); ++i) {
+        std::vector<std::vector<std::future<PageResult>>> page_futures(num_files);
+
+        // Get loading results and submit page processing tasks
+        for (size_t i = 0; i < num_files; ++i) {
             try {
                 auto result = loading_futures[i].get();
                 file_contents[i] = result.first;
                 file_pages[i] = std::move(result.second);
+                size_t num_pages = file_pages[i].size();
+                page_futures[i].resize(num_pages);
+
+                for (size_t j = 0; j < num_pages; ++j) {
+                    page_futures[i][j] = _thread_pool.submit([this, page = file_pages[i][j]]() {
+                        return process_page(page);
+                    });
+                }
             } catch (const std::exception &e) {
                 // Handle loading error
                 file_contents[i] = nullptr;
@@ -99,44 +93,10 @@ namespace punp {
             }
         }
 
-        // Determine optimal thread count
-        size_t n_thread = max_threads;
-        size_t total_pages = 0;
-        for (const auto &pages : file_pages) {
-            total_pages += pages.size();
-        }
-        if (n_thread == 0) {
-            n_thread = std::min(hw_max_thread, total_pages);
-            n_thread = std::max(n_thread, static_cast<size_t>(1));
-        } else {
-            n_thread = std::min(n_thread, hw_max_thread);
-        }
-        // Scaling the thread pool to the optimal number of threads
-        _thread_pool.scaling(n_thread);
-
-        // Submit all pages to thread pool
-        std::vector<std::vector<std::future<PageResult>>> page_futures;
-        page_futures.reserve(file_paths.size());
-
-        for (size_t i = 0; i < file_paths.size(); ++i) {
-            const auto &pages = file_pages[i];
-            std::vector<std::future<PageResult>> cur_page_future;
-            cur_page_future.reserve(pages.size());
-
-            for (const auto &page : pages) {
-                cur_page_future.emplace_back(_thread_pool.submit([this, page]() {
-                    return process_page(page);
-                }));
-            }
-
-            page_futures.emplace_back(std::move(cur_page_future));
-        }
-
         // Collect results
-        std::vector<ProcessingResult> results;
-        results.reserve(file_paths.size());
+        std::vector<ProcessingResult> results(num_files);
 
-        for (size_t i = 0; i < file_paths.size(); ++i) {
+        for (size_t i = 0; i < num_files; ++i) {
             const auto &file_path = file_paths[i];
             const auto &file_content = file_contents[i];
 
@@ -149,7 +109,7 @@ namespace punp {
                 // File loading failed
                 result.ok = false;
                 result.err_msg = "Failed to load file content";
-                results.emplace_back(result);
+                results[i] = result;
                 continue;
             }
 
@@ -169,7 +129,7 @@ namespace punp {
                 }
             }
 
-            results.emplace_back(result);
+            results[i] = result;
         }
 
         return results;
@@ -289,6 +249,19 @@ namespace punp {
         return pages;
     }
 
+    std::pair<std::shared_ptr<FileContent>, std::vector<Page>> FileProcessor::preprocess_file(const std::string &file_path) const {
+        auto file_content = load_file_content(file_path);
+        if (file_content) {
+            // Build global protected intervals for the entire file
+            file_content->protected_intervals = _ac_automaton.build_global_protected_intervals(file_content->content);
+
+            auto pages = create_pages(file_content);
+            return std::make_pair(file_content, std::move(pages));
+        } else {
+            return std::make_pair(nullptr, std::vector<Page>{});
+        }
+    }
+
     PageResult FileProcessor::process_page(const Page &page) const {
         PageResult result;
         result.file_path = page.f_ptr->filename;
@@ -310,9 +283,6 @@ namespace punp {
 
             {
                 std::lock_guard<std::mutex> lock(page.f_ptr->processed_mutex);
-                if (page.f_ptr->processed_pages.size() <= page.pid) {
-                    page.f_ptr->processed_pages.resize(page.pid + 1);
-                }
                 page.f_ptr->processed_pages[page.pid] = result.processed_content;
             }
 
