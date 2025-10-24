@@ -1,6 +1,7 @@
 #include "config_manager.h"
 #include "common.h"
 #include "types.h"
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -204,7 +205,23 @@ namespace punp {
         // Convert to wide strings and add to protected regions
         text_t wstart = to_tstr(start_str);
         text_t wend = to_tstr(end_str);
+        if (wstart.empty() || wend.empty()) {
+            std::cerr << Colors::YELLOW << "Warning: Empty start or end marker at " << file_path
+                      << ":" << lno << ": " << line << '\n'
+                      << Colors::RESET;
+            return false;
+        }
         _protected_regions.emplace_back(wstart, wend);
+
+        // NOTE: Now sort protected regions by start marker length (shorter first).
+        // It can be changed to priority-based if needed.
+        if (_protected_regions.size() > 1) {
+            std::sort(_protected_regions.begin(), _protected_regions.end(),
+                      [](const ProtectedRegion &a, const ProtectedRegion &b) {
+                          return a.first.length() < b.first.length();
+                      });
+        }
+
         return true;
     }
 

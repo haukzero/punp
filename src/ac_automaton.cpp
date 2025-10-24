@@ -77,38 +77,29 @@ namespace punp {
             return intervals;
         }
 
-        // Pre-filter valid regions
-        std::vector<std::pair<const text_t *, const text_t *>> valid_regions;
-        valid_regions.reserve(_protected_regions.size());
-
-        for (const auto &region : _protected_regions) {
-            if (!region.first.empty() && !region.second.empty()) {
-                valid_regions.emplace_back(&region.first, &region.second);
-            }
-        }
-
-        if (valid_regions.empty()) {
-            return intervals;
-        }
-
         // Single-pass scan through text
-        size_t pos = 0;
-        while (pos < text.length()) {
+        size_t pos = 0, text_len = text.length();
+        while (pos < text_len) {
+            // Early exit if remaining text is shorter than shortest start marker
+            if (text_len - pos < _protected_regions.front().first.length()) {
+                break;
+            }
+
             // Try to match any start marker at current position
             bool found_start = false;
             const text_t *matched_start = nullptr;
             const text_t *matched_end = nullptr;
             size_t start_pos = pos;
 
-            for (const auto &region_ptrs : valid_regions) {
-                const text_t &start_marker = *region_ptrs.first;
+            for (const auto &region_ptrs : _protected_regions) {
+                const text_t &start_marker = region_ptrs.first;
 
-                if (pos + start_marker.length() <= text.length()) {
+                if (pos + start_marker.length() <= text_len) {
                     if (text.compare(pos, start_marker.length(), start_marker) == 0) {
                         matched_start = &start_marker;
-                        matched_end = region_ptrs.second;
+                        matched_end = &region_ptrs.second;
                         found_start = true;
-                        break; // First match wins (can be adjusted based on priority needs)
+                        break;
                     }
                 }
             }
@@ -116,28 +107,16 @@ namespace punp {
             if (found_start) {
                 // Found a start marker, now search for corresponding end marker
                 size_t end_search_pos = start_pos + matched_start->length();
-                size_t end_begin = text_t::npos;
+                size_t end_begin = text.find(*matched_end, end_search_pos);
 
-                // Efficient search for end marker
-                size_t search_limit = text.length() - matched_end->length() + 1;
-                for (size_t i = end_search_pos; i < search_limit; ++i) {
-                    if (text.compare(i, matched_end->length(), *matched_end) == 0) {
-                        end_begin = i;
-                        break;
-                    }
-                }
-
-                if (end_begin != text_t::npos) {
-                    size_t end_last = end_begin + matched_end->length() - 1;
-                    intervals.emplace_back(start_pos, end_last,
-                                           matched_start->length(), matched_end->length());
-                    pos = end_begin + matched_end->length();
-                } else {
-                    // No matching end marker found - protect till end of text
-                    intervals.emplace_back(start_pos, text.length() - 1,
-                                           matched_start->length(), matched_end->length());
+                if (end_begin == text_t::npos) {
                     break;
                 }
+
+                size_t end_last = end_begin + matched_end->length() - 1;
+                intervals.emplace_back(start_pos, end_last,
+                                       matched_start->length(), matched_end->length());
+                pos = end_begin + matched_end->length();
             } else {
                 // No start marker at current position, move forward
                 ++pos;
