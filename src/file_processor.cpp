@@ -7,7 +7,6 @@
 #include <codecvt>
 #include <cstddef>
 #include <fstream>
-#include <future>
 #include <iostream>
 #include <sys/stat.h>
 
@@ -61,75 +60,68 @@ namespace punp {
         }
         _thread_pool.scaling(num_threads);
 
-        // Submit file loading tasks
-        std::vector<std::future<std::pair<std::shared_ptr<FileContent>, std::vector<Page>>>> loading_futures(num_files);
+        // Shared state for coordination
+        std::mutex task_mutex;
+        std::condition_variable completion_cv;
+        std::atomic<size_t> pending_tasks{num_files};
 
+        // Submit file loading tasks with optimized callback
         for (size_t i = 0; i < num_files; ++i) {
-            loading_futures[i] = _thread_pool.submit([this, file_path = file_paths[i]]() {
-                return preprocess_file(file_path);
+            _thread_pool.submit_with_callback(
+                [this, file_path = file_paths[i]]() {
+                    return preprocess_file(file_path);
+                },
+                [this, i, &file_contents, &file_pages, &pending_tasks, &completion_cv](
+                    std::pair<std::shared_ptr<FileContent>, std::vector<Page>> result) {
+                    if (!result.first || result.second.empty()) {
+                        // No valid file content or pages, decrement and notify if done
+                        if (pending_tasks.fetch_sub(1) == 1) {
+                            completion_cv.notify_one();
+                        }
+                        return;
+                    }
+                    file_contents[i] = result.first;
+                    file_pages[i] = std::move(result.second);
+
+                    size_t num_pages = file_pages[i].size();
+
+                    // Batch submit all page tasks
+                    pending_tasks.fetch_add(num_pages - 1);
+                    for (size_t j = 0; j < num_pages; ++j) {
+                        _thread_pool.submit(
+                            [this, page = file_pages[i][j], &pending_tasks, &completion_cv]() {
+                                process_page(page);
+                                // Only notify when all tasks complete
+                                if (pending_tasks.fetch_sub(1) == 1) {
+                                    completion_cv.notify_one();
+                                }
+                            });
+                    }
+                });
+        }
+
+        // Wait for all tasks to complete
+        {
+            std::unique_lock<std::mutex> lock(task_mutex);
+            completion_cv.wait(lock, [&pending_tasks] {
+                return pending_tasks.load() == 0;
             });
         }
 
-        std::vector<std::vector<std::future<PageResult>>> page_futures(num_files);
-
-        // Get loading results and submit page processing tasks
-        for (size_t i = 0; i < num_files; ++i) {
-            try {
-                auto result = loading_futures[i].get();
-                file_contents[i] = result.first;
-                file_pages[i] = std::move(result.second);
-                size_t num_pages = file_pages[i].size();
-                page_futures[i].resize(num_pages);
-
-                for (size_t j = 0; j < num_pages; ++j) {
-                    page_futures[i][j] = _thread_pool.submit([this, page = file_pages[i][j]]() {
-                        return process_page(page);
-                    });
-                }
-            } catch (const std::exception &e) {
-                // Handle loading error
-                file_contents[i] = nullptr;
-                file_pages[i] = {};
-            }
-        }
-
-        // Collect results
+        // Collect results from file_contents
         std::vector<ProcessingResult> results(num_files);
-
         for (size_t i = 0; i < num_files; ++i) {
             const auto &file_path = file_paths[i];
             const auto &file_content = file_contents[i];
 
-            ProcessingResult result;
-            result.file_path = file_path;
-            result.ok = true;
-            result.n_rep = 0;
-
-            if (!file_content) {
-                // File loading failed
-                result.ok = false;
-                result.err_msg = "Failed to load file content";
-                results[i] = result;
-                continue;
+            results[i].file_path = file_path;
+            if (file_content) {
+                results[i].ok = true;
+                results[i].n_rep = file_content->total_replacements.load();
+            } else {
+                results[i].ok = false;
+                results[i].err_msg = "Failed to load file content";
             }
-
-            for (auto &page_future : page_futures[i]) {
-                try {
-                    auto page_result = page_future.get();
-                    if (!page_result.ok) {
-                        result.ok = false;
-                        result.err_msg = page_result.err_msg;
-                        break;
-                    }
-                    result.n_rep += page_result.n_rep;
-                } catch (const std::exception &e) {
-                    result.ok = false;
-                    result.err_msg = std::string("Page future exception: ") + e.what();
-                    break;
-                }
-            }
-
-            results[i] = result;
         }
 
         return results;
