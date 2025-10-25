@@ -299,10 +299,7 @@ namespace punp {
 
             page.f_ptr->total_replacements.fetch_add(result.n_rep);
 
-            {
-                std::lock_guard<std::mutex> lock(page.f_ptr->processed_mutex);
-                page.f_ptr->processed_pages[page.pid] = result.processed_content;
-            }
+            page.f_ptr->processed_pages[page.pid] = result.processed_content;
 
             int remaining = page.f_ptr->ref_cnt.fetch_sub(1) - 1;
             if (remaining == 0) {
@@ -372,18 +369,14 @@ namespace punp {
             }
 
             text_t complete_content;
-            {
-                std::lock_guard<std::mutex> lock(file_content->processed_mutex);
+            size_t total_size = 0;
+            for (const auto &page_content : file_content->processed_pages) {
+                total_size += page_content.size();
+            }
+            complete_content.reserve(total_size);
 
-                size_t total_size = 0;
-                for (const auto &page_content : file_content->processed_pages) {
-                    total_size += page_content.size();
-                }
-                complete_content.reserve(total_size);
-
-                for (const auto &page_content : file_content->processed_pages) {
-                    complete_content += page_content;
-                }
+            for (const auto &page_content : file_content->processed_pages) {
+                complete_content += page_content;
             }
 
             std::wofstream output_file(file_content->filename);

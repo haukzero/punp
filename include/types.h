@@ -4,7 +4,6 @@
 #include <codecvt>
 #include <locale>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -63,7 +62,6 @@ namespace punp {
         std::atomic<int> ref_cnt{0};
         std::vector<text_t> processed_pages;
         std::atomic<size_t> total_replacements{0};
-        std::mutex processed_mutex;
         std::vector<GlobalProtectedInterval> protected_intervals;
 
         FileContent(const std::string &name, const text_t &data)
