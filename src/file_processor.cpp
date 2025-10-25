@@ -50,6 +50,7 @@ namespace punp {
 
         std::vector<std::shared_ptr<FileContent>> file_contents(num_files);
         std::vector<std::vector<Page>> file_pages(num_files);
+        std::vector<std::vector<PageResult>> page_results(num_files);
 
         size_t num_threads = max_threads;
         if (max_threads == 0) {
@@ -71,7 +72,7 @@ namespace punp {
                 [this, file_path = file_paths[i]]() {
                     return preprocess_file(file_path);
                 },
-                [this, i, &file_contents, &file_pages, &pending_tasks, &completion_cv](
+                [this, i, &file_contents, &file_pages, &page_results, &pending_tasks, &completion_cv](
                     std::pair<std::shared_ptr<FileContent>, std::vector<Page>> result) {
                     if (!result.first || result.second.empty()) {
                         // No valid file content or pages, decrement and notify if done
@@ -84,13 +85,14 @@ namespace punp {
                     file_pages[i] = std::move(result.second);
 
                     size_t num_pages = file_pages[i].size();
+                    page_results[i].resize(num_pages);
 
                     // Batch submit all page tasks
                     pending_tasks.fetch_add(num_pages - 1);
                     for (size_t j = 0; j < num_pages; ++j) {
                         _thread_pool.submit(
-                            [this, page = file_pages[i][j], &pending_tasks, &completion_cv]() {
-                                process_page(page);
+                            [this, i, j, page = file_pages[i][j], &page_results, &pending_tasks, &completion_cv]() {
+                                page_results[i][j] = process_page(page);
                                 // Only notify when all tasks complete
                                 if (pending_tasks.fetch_sub(1) == 1) {
                                     completion_cv.notify_one();
@@ -108,19 +110,43 @@ namespace punp {
             });
         }
 
-        // Collect results from file_contents
+        // Collect results from file_contents and page_results
         std::vector<ProcessingResult> results(num_files);
         for (size_t i = 0; i < num_files; ++i) {
             const auto &file_path = file_paths[i];
             const auto &file_content = file_contents[i];
 
             results[i].file_path = file_path;
-            if (file_content) {
-                results[i].ok = true;
-                results[i].n_rep = file_content->total_replacements.load();
-            } else {
+            if (!file_content) {
                 results[i].ok = false;
                 results[i].err_msg = "Failed to load file content";
+                continue;
+            }
+
+            // Check if any page processing failed
+            bool has_error = false;
+            std::string error_messages;
+            size_t total_replacements = 0;
+
+            for (const auto &page_result : page_results[i]) {
+                if (!page_result.ok) {
+                    has_error = true;
+                    if (!error_messages.empty()) {
+                        error_messages += "; ";
+                    }
+                    error_messages += "Page " + std::to_string(page_result.page_id) + ": " + page_result.err_msg;
+                } else {
+                    total_replacements += page_result.n_rep;
+                }
+            }
+
+            if (has_error) {
+                results[i].ok = false;
+                results[i].err_msg = error_messages;
+                results[i].n_rep = total_replacements;
+            } else {
+                results[i].ok = true;
+                results[i].n_rep = total_replacements;
             }
         }
 
