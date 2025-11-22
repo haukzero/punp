@@ -13,7 +13,7 @@ namespace punp {
             i += consumed - 1; // Adjust index for consumed arguments
         }
 
-        return !_inputs.empty() || _show_help || _show_version;
+        return !_inputs.empty() || _show_help || _show_version || _update;
     }
 
     int ArgumentParser::process_args(const std::string &arg, const char *next_arg) {
@@ -24,6 +24,11 @@ namespace punp {
 
         if (arg == "-h" || arg == "--help") {
             _show_help = true;
+            return 1;
+        }
+
+        if (arg == "-u" || arg == "--update") {
+            _update = true;
             return 1;
         }
 
@@ -55,7 +60,7 @@ namespace punp {
 
         // If it starts with -, it's an unknown option
         if (arg.front() == '-') {
-            std::cerr << "Warning: Unknown option '" << arg << "'" << std::endl;
+            std::cerr << Colors::YELLOW << "Warning: Unknown option '" << arg << "'" << Colors::RESET << std::endl;
             return 1;
         }
 
@@ -74,6 +79,7 @@ namespace punp {
         std::cout << Colors::GREEN << "Options:\n";
         std::cout << Colors::BLUE << "  -V, --version" << Colors::YELLOW << "           Show version information\n";
         std::cout << Colors::BLUE << "  -h, --help" << Colors::YELLOW << "              Show this help message\n";
+        std::cout << Colors::BLUE << "  -u, --update" << Colors::YELLOW << "            Update the tool to the latest version\n";
         std::cout << Colors::BLUE << "  -r, --recursive" << Colors::YELLOW << "         Process directories recursively\n";
         std::cout << Colors::BLUE << "  -v, --verbose" << Colors::YELLOW << "           Enable verbose output\n";
         std::cout << Colors::BLUE << "  -t, --threads <n>" << Colors::YELLOW << "       Set maximum thread count (default: auto)\n";

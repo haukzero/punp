@@ -3,6 +3,7 @@
 #include "config_manager.h"
 #include "file_finder.h"
 #include "file_processor.h"
+#include "updater.h"
 #include <chrono>
 #include <iostream>
 
@@ -27,6 +28,12 @@ int main(int argc, char *argv[]) {
 
     if (parser.show_help()) {
         ArgumentParser::display_help(argv[0]);
+        return 0;
+    }
+
+    if (parser.update()) {
+        Updater updater;
+        updater.maybe_update();
         return 0;
     }
 

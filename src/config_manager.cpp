@@ -11,7 +11,7 @@ namespace punp {
 
     namespace tokenizer {
 
-        enum TokenType {
+        enum class TokenType {
             KEYWORD,
             STRING,
             COMMA,

@@ -12,6 +12,7 @@ namespace punp{
         ProcessingConfig _config;
         bool _show_version = false;
         bool _show_help = false;
+        bool _update = false;
 
         int process_args(const std::string &arg, const char *next_arg);
 
@@ -23,6 +24,7 @@ namespace punp{
         const ProcessingConfig &config() const noexcept { return _config; }
         bool show_version() const noexcept { return _show_version; }
         bool show_help() const noexcept { return _show_help; }
+        bool update() const noexcept { return _update; }
 
         bool parse(int argc, char *argv[]);
         static void display_version();

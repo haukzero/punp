@@ -38,4 +38,18 @@ namespace punp {
         inline const std::string CONFIG_DIR = ROOT_DIR + "/share/punp/";
     } // namespace StoreDir
 
+    namespace RemoteStore {
+        constexpr const char *repo_url = "https://github.com/haukzero/punp.git";
+        constexpr const char *version_file_url = "https://raw.githubusercontent.com/haukzero/punp/refs/heads/master/include/common.h";
+    } // namespace RemoteStore
+
+#if defined(__GNUC__) || defined(__clang__)
+#define UNREACHABLE() __builtin_unreachable()
+#elif defined(_MSC_VER)
+#define UNREACHABLE() __assume(0)
+#else
+#include <cstdlib>
+    [[noreturn]] inline void unreachable() { std::abort(); }
+#define UNREACHABLE() unreachable()
+#endif
 } // namespace punp
