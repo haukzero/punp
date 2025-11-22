@@ -1,25 +1,25 @@
-# Rules:
-# - Comment: # This is a comment
-# - Add rule: "old text" -> "new text"
-# - Delete rule: - "old text"
-# - Protected region: !"start" ~ "end"
-# - Clear rules: --
+// Rules:
+// - Comment: // This is a comment
+// - Add rule: REPLACE(FROM "old text", TO "new text");
+// - Delete rule: DEL("old text");
+// - Protected region: PROTECT(START_MARKER "start", END_MARKER "end");
+// - Clear rules: CLEAR();
 
-# Default rules
-"。" -> ". "
-"，" -> ", "
-"、" -> ", "
-"；" -> "; "
-"？" -> "? "
-"！" -> "! "
-"：" -> ": "
-"“" -> """
-"”" -> """
-"‘" -> "'"
-"’" -> "'"
-"（" -> "("
-"）" -> ")"
-"【" -> "["
-"】" -> "]"
+// Default rules
+REPLACE(FROM "。", TO ". ");
+REPLACE(FROM "，", TO ", ");
+REPLACE(FROM "、", TO ", ");
+REPLACE(FROM "；", TO "; ");
+REPLACE(FROM "？", TO "? ");
+REPLACE(FROM "！", TO "! ");
+REPLACE(FROM "：", TO ": ");
+REPLACE(FROM "“", TO "\"");
+REPLACE(FROM "”", TO "\"");
+REPLACE(FROM "‘", TO "'");
+REPLACE(FROM "’", TO "'");
+REPLACE(FROM "（", TO "(");
+REPLACE(FROM "）", TO ")");
+REPLACE(FROM "【", TO "[");
+REPLACE(FROM "】", TO "]");
 
-# Add your new rules here, the new will overwrite the old
+// Add your new rules here, the new will overwrite the old

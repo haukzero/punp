@@ -11,13 +11,16 @@ namespace punp {
         ReplacementMap _rep_map;
         ProtectedRegions _protected_regions;
 
-        bool parse_clear_rules(const std::string &line);
-        bool parse_add_rule(const std::string &file_path, const int lno, const std::string &line);
-        bool parse_erase_rule(const std::string &file_path, const int lno, const std::string &line);
-        bool parse_protected_region(const std::string &file_path, const int lno, const std::string &line);
+        void process_statement(const std::string &stmt, const std::string &file_path, int lno);
+        bool parse_replace(const std::string &args, const std::string &file_path, int lno);
+        bool parse_del(const std::string &args, const std::string &file_path, int lno);
+        bool parse_protect(const std::string &args, const std::string &file_path, int lno);
+        bool parse_clear();
 
         std::vector<std::string> find_files() const;
         bool parse(const std::string &file_path);
+
+        void to_upper(std::string &str) const;
         text_t to_tstr(const std::string &str) const;
 
     public:
