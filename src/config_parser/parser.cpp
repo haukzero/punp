@@ -242,7 +242,7 @@ namespace punp {
 
         // Replace format: REPLACE(FROM "...", TO "...");
         bool Parser::parse_replace() {
-            int current_line = _current_token.line;
+            size_t current_line = _current_token.line;
             auto kwargs_keys = kwargs_keys_t({"FROM", "TO"});
             bool is_valid = true;
             auto kwargs = parse_args(kwargs_keys, is_valid);
@@ -279,7 +279,7 @@ namespace punp {
 
         // Del format: DEL(FROM "...");
         bool Parser::parse_del() {
-            int current_line = _current_token.line;
+            size_t current_line = _current_token.line;
             auto kwargs_keys = kwargs_keys_t({"FROM"});
             bool is_valid = true;
             auto kwargs = parse_args(kwargs_keys, is_valid);
@@ -310,7 +310,7 @@ namespace punp {
 
             if (_rep_map_ptr->erase(to_tstr(kwargs["FROM"])) == 0) {
                 warn("No rule found to erase for '", kwargs["FROM"],
-                     "' at ", _file_path, ':', _current_token.line);
+                     "' at ", _file_path, ':', current_line);
             }
             return true;
         }
@@ -339,7 +339,7 @@ namespace punp {
 
         // Protect format: PROTECT(START_MARKER "...", END_MARKER "...");
         bool Parser::parse_protect() {
-            int current_line = _current_token.line;
+            size_t current_line = _current_token.line;
             auto kwargs_keys = kwargs_keys_t({"START_MARKER", "END_MARKER"});
             bool is_valid = true;
             auto kwargs = parse_args(kwargs_keys, is_valid);

@@ -14,14 +14,14 @@ namespace punp {
         private:
             std::string _input;
             size_t _pos = 0;
-            int _line = 1;
-            int _column = 1;
+            size_t _line = 1;
+            size_t _column = 1;
 
             char peek() const;
             char advance();
             void skip_whitespace_and_comments();
             Token make_token(const TokenType &type, const std::string &value) const;
-            Token make_token(const TokenType &type, const std::string &value, int line, int column) const;
+            Token make_token(const TokenType &type, const std::string &value, size_t line, size_t column) const;
             Token scan_string();
             Token scan_identifier();
         };

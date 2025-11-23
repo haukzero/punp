@@ -19,8 +19,8 @@ namespace punp {
         struct Token {
             TokenType type;
             std::string value;
-            int line;
-            int column;
+            size_t line;
+            size_t column;
         };
 
     } // namespace config_parser

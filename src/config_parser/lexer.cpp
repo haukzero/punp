@@ -75,9 +75,9 @@ namespace punp {
         }
 
         Token Lexer::make_token(const TokenType &type, const std::string &value) const {
-            return Token{type, value, _line, _column - static_cast<int>(value.size())};
+            return Token{type, value, _line, _column - value.size()};
         }
-        Token Lexer::make_token(const TokenType &type, const std::string &value, int line, int column) const {
+        Token Lexer::make_token(const TokenType &type, const std::string &value, size_t line, size_t column) const {
             return Token{type, value, line, column};
         }
 
