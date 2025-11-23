@@ -1,8 +1,8 @@
 #include "file_finder.h"
+#include "color_print.h"
 #include "common.h"
 #include <algorithm>
 #include <filesystem>
-#include <iostream>
 
 namespace punp {
 
@@ -26,8 +26,7 @@ namespace punp {
                 // If it's a regular file, add it directly
                 matched_files.emplace_back(pattern);
             } else {
-                std::cerr << Colors::YELLOW << "Warning: '" << pattern << "' not found" << '\n'
-                          << Colors::RESET;
+                warn("'", pattern, "' not found");
             }
 
             // Ignore the rule file
@@ -66,9 +65,7 @@ namespace punp {
                 files = get_files_from_dir(dir);
             }
         } catch (const std::filesystem::filesystem_error &e) {
-            std::cerr << Colors::RED << "Error accessing directory '" << dir << "': "
-                      << e.what() << '\n'
-                      << Colors::RESET;
+            error("Accessing directory '", dir, "': ", e.what());
         }
 
         return files;
@@ -97,9 +94,7 @@ namespace punp {
                 }
             }
         } catch (const std::filesystem::filesystem_error &e) {
-            std::cerr << Colors::RED << "Error expanding glob '" << pattern << "': "
-                      << e.what() << '\n'
-                      << Colors::RESET;
+            error("Expanding glob '", pattern, "': ", e.what());
         }
 
         return matches;
@@ -181,9 +176,7 @@ namespace punp {
                 }
             }
         } catch (const std::filesystem::filesystem_error &e) {
-            std::cerr << Colors::RED << "Error reading directory '" << directory << "': "
-                      << e.what() << '\n'
-                      << Colors::RESET;
+            error("Reading directory '", directory, "': ", e.what());
         }
 
         return files;

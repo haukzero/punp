@@ -1,11 +1,13 @@
 #include "updater.h"
+#include "color_print.h"
 #include "common.h"
 #include <filesystem>
 #include <fstream>
-#include <iostream>
 
 namespace punp {
     void Updater::maybe_update() {
+        println("Checking for updates...");
+
         auto tmp_dir = std::filesystem::temp_directory_path() / "punp_updater";
         if (!std::filesystem::exists(tmp_dir)) {
             std::filesystem::create_directory(tmp_dir);
@@ -18,9 +20,9 @@ namespace punp {
             update(tmp_dir);
         }
 
-        std::cout << "Cleaning up temporary files...\n";
+        println("Cleaning up temporary files...");
         std::filesystem::remove_all(tmp_dir);
-        std::cout << "Cleanup complete.\n";
+        println("Cleanup complete.");
     }
 
     bool Updater::command_exists(const std::string &cmd) const {
@@ -54,15 +56,13 @@ namespace punp {
         }
 
         if (std::system(download_cmd.c_str()) != 0) {
-            std::cerr << Colors::RED << "Error: Failed to download version file."
-                      << Colors::RESET << "\n";
+            error("Failed to download version file.");
             return "";
         }
 
         std::ifstream version_file(tmp_file_path);
         if (!version_file.is_open()) {
-            std::cerr << Colors::RED << "Error: Failed to open downloaded version file."
-                      << Colors::RESET << "\n";
+            error("Failed to open downloaded version file.");
             return "";
         }
         std::string content((std::istreambuf_iterator<char>(version_file)), std::istreambuf_iterator<char>());
@@ -106,20 +106,17 @@ namespace punp {
                 return CheckResult::NO_UPDATE;
             }
         }
-        std::cout << Colors::GREEN << "You are using the latest version (" << local_version << ").\n"
-                  << Colors::RESET;
+        println_green("You are using the latest version (", local_version, ").");
         return CheckResult::UPDATED;
     }
 
     Updater::CheckResult Updater::check_and_compare(const std::filesystem::path &tmp_dir) const {
         DownloadTool tool = detect_download_tool();
         if (tool == DownloadTool::NONE) {
-            std::cerr << Colors::RED << "Error: No download tool found.\n"
-                      << Colors::RESET;
-            std::cerr << Colors::YELLOW << "Hint: You can try downloading the downloader first and then try again:\n"
-                      << "  - wget\n"
-                      << "  - curl\n"
-                      << Colors::RESET;
+            error("No download tool found.");
+            println_yellow("Hint: You can try downloading the downloader first and then try again:");
+            println_yellow("  - wget");
+            println_yellow("  - curl");
             return CheckResult::FAILED;
         }
 
@@ -132,50 +129,43 @@ namespace punp {
 
     void Updater::update(const std::filesystem::path &tmp_dir) const {
         if (!command_exists("git")) {
-            std::cerr << Colors::RED << "Error: Git is not installed. Please install Git to update punp.\n"
-                      << Colors::RESET;
+            error("Git is not installed. Please install Git to update punp.");
             return;
         }
 
         if (!command_exists("cmake")) {
-            std::cerr << Colors::RED << "Error: CMake is not installed. Please install CMake to update punp.\n"
-                      << Colors::RESET;
+            error("CMake is not installed. Please install CMake to update punp.");
             return;
         }
 
-        std::cout << Colors::YELLOW << "Updating punp to the latest version..." << Colors::RESET << "\n";
+        println_yellow("Updating punp to the latest version...");
 
         auto clone_path = tmp_dir / "punp_repo";
         std::string clone_cmd = "git clone --depth 1 " + std::string(RemoteStore::repo_url) + " " + clone_path.string();
         if (std::system(clone_cmd.c_str()) != 0) {
-            std::cerr << Colors::RED << "Error: Failed to clone the repository.\n"
-                      << Colors::RESET;
+            error("Failed to clone the repository.");
             return;
         }
 
         auto build_path = clone_path / "build";
         std::string cmake_conf_cmd = "cmake -S " + clone_path.string() + " -B " + build_path.string() + " -DCMAKE_BUILD_TYPE=MinSizeRel";
         if (std::system(cmake_conf_cmd.c_str()) != 0) {
-            std::cerr << Colors::RED << "Error: CMake configuration failed.\n"
-                      << Colors::RESET;
+            error("CMake configuration failed.");
             return;
         }
 
         std::string build_cmd = "cmake --build " + build_path.string();
         if (std::system(build_cmd.c_str()) != 0) {
-            std::cerr << Colors::RED << "Error: Build failed.\n"
-                      << Colors::RESET;
+            error("Build failed.");
             return;
         }
 
         std::string install_cmd = "cmake --install " + build_path.string();
         if (std::system(install_cmd.c_str()) != 0) {
-            std::cerr << Colors::RED << "Error: Installation failed.\n"
-                      << Colors::RESET;
+            error("Installation failed.");
             return;
         }
 
-        std::cout << Colors::GREEN << "punp has been successfully updated to the latest version!\n"
-                  << Colors::RESET;
+        println_green("punp has been successfully updated to the latest version!");
     }
 } // namespace punp

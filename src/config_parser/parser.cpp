@@ -1,9 +1,8 @@
 #include "config_parser/parser.h"
-#include "common.h"
+#include "color_print.h"
 #include "config_parser/common.h"
 #include "types.h"
 #include <algorithm>
-#include <iostream>
 #include <string>
 #include <unordered_map>
 
@@ -31,11 +30,10 @@ namespace punp {
 
         void Parser::parse_statement() {
             if (_current_token.type != TokenType::TOKEN_IDENT) {
-                std::cerr << Colors::RED
-                          << "Error: Expected statement at " << _file_path
-                          << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected statement at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 // try to skip to next semicolon
                 while (_current_token.type != TokenType::TOKEN_SEMICOLON && _current_token.type != TokenType::TOKEN_EOF) {
                     advance();
@@ -44,10 +42,10 @@ namespace punp {
                     advance();
                 } else {
                     // EOF reached
-                    std::cerr << Colors::RED << "Error: Unexpected end of file while parsing statement at "
-                              << _file_path << ':' << _current_token.line
-                              << ':' << _current_token.column << '\n'
-                              << Colors::RESET;
+                    error("Unexpected end of file while parsing statement at ",
+                          _file_path,
+                          ':', _current_token.line,
+                          ':', _current_token.column);
                     return;
                 }
             }
@@ -56,13 +54,11 @@ namespace punp {
             to_upper(keyword);
 
             if (_peek_token.type != TokenType::TOKEN_LPAREN) {
-                std::cerr << Colors::RED
-                          << "Error: Expected '(' after " << keyword
-                          << " at " << _file_path
-                          << ':' << _peek_token.line
-                          << ':' << _peek_token.column
-                          << " (Found: " << _peek_token.value << ")\n"
-                          << Colors::RESET;
+                error("Expected '(' after ", keyword,
+                      " at ", _file_path,
+                      ':', _peek_token.line,
+                      ':', _peek_token.column,
+                      " (Found: ", _peek_token.value, ")");
                 // skip to next semicolon
                 while (_current_token.type != TokenType::TOKEN_SEMICOLON &&
                        _current_token.type != TokenType::TOKEN_EOF) {
@@ -72,10 +68,10 @@ namespace punp {
                     advance();
                 } else {
                     // EOF reached
-                    std::cerr << Colors::RED << "Error: Unexpected end of file while parsing statement at "
-                              << _file_path << ':' << _current_token.line
-                              << ':' << _current_token.column << '\n'
-                              << Colors::RESET;
+                    error("Unexpected end of file while parsing statement at ",
+                          _file_path,
+                          ':', _current_token.line,
+                          ':', _current_token.column);
                 }
                 return;
             }
@@ -89,12 +85,10 @@ namespace punp {
             if (it != _parse_func_map.end()) {
                 success = (this->*(it->second))();
             } else {
-                std::cerr << Colors::RED
-                          << "Error: Unknown command '" << keyword
-                          << "' at " << _file_path
-                          << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Unknown command '", keyword,
+                      "' at ", _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 success = false;
             }
 
@@ -126,12 +120,11 @@ namespace punp {
 
                 // Check for unexpected semicolon (likely missing ')')
                 if (_current_token.type == TokenType::TOKEN_SEMICOLON) {
-                    std::cerr << Colors::RED
-                              << "Error: Unexpected token ';' at "
-                              << _file_path << ':' << _current_token.line
-                              << ':' << _current_token.column
-                              << ". Expected ')'." << '\n'
-                              << Colors::RESET;
+                    error("Unexpected token ';' at ",
+                          _file_path,
+                          ':', _current_token.line,
+                          ':', _current_token.column,
+                          ". Expected ')'.");
                     is_valid = false;
                     return kwargs;
                 }
@@ -140,31 +133,29 @@ namespace punp {
                     if (_current_token.type == TokenType::TOKEN_COMMA) {
                         advance();
                         if (_current_token.type == TokenType::TOKEN_RPAREN) {
-                            std::cerr << Colors::RED
-                                      << "Error: Trailing comma is not allowed at "
-                                      << _file_path << ':' << _current_token.line
-                                      << ':' << _current_token.column << '\n'
-                                      << Colors::RESET;
+                            error("Trailing comma is not allowed at ",
+                                  _file_path,
+                                  ':', _current_token.line,
+                                  ':', _current_token.column);
                             is_valid = false;
                             return kwargs;
                         }
                     } else {
-                        std::cerr << Colors::RED
-                                  << "Error: Expected ',' between arguments at "
-                                  << _file_path << ':' << _current_token.line
-                                  << ':' << _current_token.column << '\n'
-                                  << Colors::RESET;
+                        error("Expected ',' between arguments at ",
+                              _file_path,
+                              ':', _current_token.line,
+                              ':', _current_token.column);
                         is_valid = false;
                         return kwargs;
                     }
                 }
 
                 if (_current_token.type != TokenType::TOKEN_IDENT) {
-                    std::cerr << Colors::RED
-                              << "Error: Expected argument key at "
-                              << _file_path << ':' << _current_token.line
-                              << ':' << _current_token.column << " (Got: '" << _current_token.value << "')\n"
-                              << Colors::RESET;
+                    error("Expected argument key at ",
+                          _file_path,
+                          ':', _current_token.line,
+                          ':', _current_token.column,
+                          " (Got: '", _current_token.value, "')");
                     is_valid = false;
                     return kwargs;
                 }
@@ -174,12 +165,11 @@ namespace punp {
                 advance();
 
                 if (_current_token.type != TokenType::TOKEN_STRING) {
-                    std::cerr << Colors::RED
-                              << "Error: Expected string value for key '" << key
-                              << "' at " << _file_path << ':' << _current_token.line
-                              << ':' << _current_token.column
-                              << " (Got: '" << _current_token.value << "')\n"
-                              << Colors::RESET;
+                    error("Expected string value for key '", key,
+                          "' at ", _file_path,
+                          ':', _current_token.line,
+                          ':', _current_token.column,
+                          " (Got: '", _current_token.value, "')");
                     is_valid = false;
                     return kwargs;
                 }
@@ -197,28 +187,25 @@ namespace punp {
 
                 if (is_known_key) {
                     if (kwargs.find(key) != kwargs.end()) {
-                        std::cerr << Colors::YELLOW << "Warning: Duplicate key '" << key << "' ignored.\n"
-                                  << Colors::RESET;
+                        warn("Duplicate key '", key, "' ignored.");
                     } else {
                         kwargs[key] = value;
                     }
                 } else {
-                    std::cerr << Colors::RED
-                              << "Error: Unknown argument key '" << key
-                              << "' at " << _file_path << ':' << _current_token.line
-                              << ':' << _current_token.column << '\n'
-                              << Colors::RESET;
+                    error("Unknown argument key '", key,
+                          "' at ", _file_path,
+                          ':', _current_token.line,
+                          ':', _current_token.column);
                 }
 
                 is_first = false;
             }
 
             if (_current_token.type == TokenType::TOKEN_EOF) {
-                std::cerr << Colors::RED
-                          << "Error: Unexpected end of file. Expected ')' at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Unexpected end of file. Expected ')' at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 is_valid = false;
                 return kwargs;
             }
@@ -265,30 +252,24 @@ namespace punp {
 
             for (const auto &key : kwargs_keys) {
                 if (kwargs.find(key) == kwargs.end()) {
-                    std::cerr << Colors::RED
-                              << "Error: Missing argument '" << key
-                              << "' in REPLACE at " << _file_path
-                              << ':' << current_line << '\n'
-                              << Colors::RESET;
+                    error("Missing argument '", key, "' in REPLACE at ", _file_path, ':', current_line);
                     return false;
                 }
             }
 
             if (!expect(TokenType::TOKEN_RPAREN)) {
-                std::cerr << Colors::RED
-                          << "Error: Expected ')' after REPLACE arguments at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected ')' after REPLACE arguments at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 return false;
             }
 
             if (!expect(TokenType::TOKEN_SEMICOLON)) {
-                std::cerr << Colors::RED
-                          << "Error: Expected ';' after REPLACE statement at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected ';' after REPLACE statement at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 return false;
             }
 
@@ -307,37 +288,29 @@ namespace punp {
                 return false;
 
             if (kwargs.find("FROM") == kwargs.end()) {
-                std::cerr << Colors::RED
-                          << "Error: Missing argument 'FROM' in DEL at " << _file_path
-                          << ':' << current_line << '\n'
-                          << Colors::RESET;
+                error("Missing argument 'FROM' in DEL at ", _file_path, ':', current_line);
                 return false;
             }
 
             if (!expect(TokenType::TOKEN_RPAREN)) {
-                std::cerr << Colors::RED
-                          << "Error: Expected ')' after DEL arguments at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected ')' after DEL arguments at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 return false;
             }
 
             if (!expect(TokenType::TOKEN_SEMICOLON)) {
-                std::cerr << Colors::RED
-                          << "Error: Expected ';' after DEL statement at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected ';' after DEL statement at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 return false;
             }
 
             if (_rep_map_ptr->erase(to_tstr(kwargs["FROM"])) == 0) {
-                std::cerr << Colors::YELLOW
-                          << "Warning: No rule found to erase for '"
-                          << kwargs["FROM"] << "' at " << _file_path
-                          << ':' << _current_token.line << '\n'
-                          << Colors::RESET;
+                warn("No rule found to erase for '", kwargs["FROM"],
+                     "' at ", _file_path, ':', _current_token.line);
             }
             return true;
         }
@@ -345,20 +318,18 @@ namespace punp {
         // Clear format: CLEAR();
         bool Parser::parse_clear() {
             if (!expect(TokenType::TOKEN_RPAREN)) {
-                std::cerr << Colors::RED
-                          << "Error: Expected ')' after CLEAR at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected ')' after CLEAR at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 return false;
             }
 
             if (!expect(TokenType::TOKEN_SEMICOLON)) {
-                std::cerr << Colors::RED
-                          << "Error: Expected ';' after CLEAR statement at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected ';' after CLEAR statement at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 return false;
             }
 
@@ -378,30 +349,24 @@ namespace punp {
 
             for (const auto &key : kwargs_keys) {
                 if (kwargs.find(key) == kwargs.end()) {
-                    std::cerr << Colors::RED
-                              << "Error: Missing argument '" << key
-                              << "' in PROTECT at " << _file_path
-                              << ':' << current_line << '\n'
-                              << Colors::RESET;
+                    error("Missing argument '", key, "' in PROTECT at ", _file_path, ':', current_line);
                     return false;
                 }
             }
 
             if (!expect(TokenType::TOKEN_RPAREN)) {
-                std::cerr << Colors::RED
-                          << "Error: Expected ')' after PROTECT arguments at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected ')' after PROTECT arguments at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 return false;
             }
 
             if (!expect(TokenType::TOKEN_SEMICOLON)) {
-                std::cerr << Colors::RED
-                          << "Error: Expected ';' after PROTECT statement at "
-                          << _file_path << ':' << _current_token.line
-                          << ':' << _current_token.column << '\n'
-                          << Colors::RESET;
+                error("Expected ';' after PROTECT statement at ",
+                      _file_path,
+                      ':', _current_token.line,
+                      ':', _current_token.column);
                 return false;
             }
 

@@ -1,9 +1,9 @@
 #include "config_manager.h"
+#include "color_print.h"
 #include "common.h"
 #include "config_parser/parser.h"
 #include <cstdlib>
 #include <fstream>
-#include <iostream>
 #include <vector>
 
 namespace punp {
@@ -12,11 +12,10 @@ namespace punp {
         auto config_files = find_files();
 
         if (config_files.empty()) {
-            std::cerr << Colors::RED << "Error: No configuration files found.\n";
-            std::cerr << "Please create a '" << RuleFile::NAME << "' file in:\n";
-            std::cerr << "  - Current directory, or\n";
-            std::cerr << "  - User config directory (" << StoreDir::CONFIG_DIR << ")\n"
-                      << Colors::RESET;
+            error("No configuration files found.");
+            println("Please create a '", RuleFile::NAME, "' file in:");
+            println("  - Current directory, or");
+            println("  - User config directory (", StoreDir::CONFIG_DIR, ")");
             return false;
         }
 
@@ -24,18 +23,17 @@ namespace punp {
         for (const auto &cf : config_files) {
             if (parse(cf)) {
                 if (verbose) {
-                    std::cout << "Loaded config from: " << cf << '\n';
+                    println("Loaded config from: ", cf);
                 }
                 ok = true;
             } else if (verbose) {
-                std::cout << Colors::YELLOW << "Skipped config file: " << cf << " (not found or invalid)" << '\n'
-                          << Colors::RESET;
+                warn("Skipped config file: ", cf, " (not found or invalid)");
             }
         }
 
         if (verbose && ok) {
-            std::cout << "Total replacement rules loaded: " << _rep_map_ptr->size() << '\n';
-            std::cout << "Total protected rules loaded: " << _protected_regions_ptr->size() << '\n';
+            println("Total replacement rules loaded: ", _rep_map_ptr->size());
+            println("Total protected rules loaded: ", _protected_regions_ptr->size());
         }
 
         return ok;

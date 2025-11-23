@@ -1,4 +1,5 @@
 #include "file_processor.h"
+#include "color_print.h"
 #include "common.h"
 #include "config_manager.h"
 #include "thread_pool.h"
@@ -7,7 +8,6 @@
 #include <codecvt>
 #include <cstddef>
 #include <fstream>
-#include <iostream>
 #include <sys/stat.h>
 
 namespace punp {
@@ -381,7 +381,7 @@ namespace punp {
 
             std::wofstream output_file(file_content->filename);
             if (!output_file) {
-                std::cerr << "Cannot open file for writing: " << file_content->filename << std::endl;
+                error("Cannot open file for writing: ", file_content->filename);
                 return false;
             }
 
@@ -392,7 +392,7 @@ namespace punp {
             return true;
 
         } catch (const std::exception &e) {
-            std::cerr << "Error writing file " << file_content->filename << ": " << e.what() << std::endl;
+            error("Writing file ", file_content->filename, ": ", e.what());
             return false;
         }
     }
@@ -423,4 +423,4 @@ namespace punp {
         return (null_bytes * 100 / std::max(bytes_read, size_t(1))) < 1;
     }
 
-} // namespace punp
+} // namespace punp << std::endl

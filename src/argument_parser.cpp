@@ -1,6 +1,6 @@
 #include "argument_parser.h"
+#include "color_print.h"
 #include "common.h"
-#include <iostream>
 
 namespace punp {
 
@@ -48,19 +48,18 @@ namespace punp {
                     _config.max_threads = std::stoul(next_arg);
                     return 2;
                 } catch (const std::exception &) {
-                    std::cerr << "Warning: Invalid thread count '" << next_arg
-                              << "', using auto-detection" << std::endl;
+                    warn("Invalid thread count '", next_arg, "', using auto-detection");
                     return 2;
                 }
             } else {
-                std::cerr << "Warning: --threads requires a number" << std::endl;
+                error("--threads requires a number");
                 return 1;
             }
         }
 
         // If it starts with -, it's an unknown option
         if (arg.front() == '-') {
-            std::cerr << Colors::YELLOW << "Warning: Unknown option '" << arg << "'" << Colors::RESET << std::endl;
+            error("Unknown option '", arg, "'");
             return 1;
         }
 
@@ -70,30 +69,63 @@ namespace punp {
     }
 
     void ArgumentParser::display_version() {
-        std::cout << "v" << Version::VERSION << '\n';
+        println("v", Version::VERSION);
     }
 
     void ArgumentParser::display_help(const std::string &programName) {
-        std::cout << Colors::GREEN << "Usage: " << programName << " [OPTIONS] <files...>\n";
-        std::cout << Colors::CYAN << "High-performance punctuation replacement tool\n";
-        std::cout << Colors::GREEN << "Options:\n";
-        std::cout << Colors::BLUE << "  -V, --version" << Colors::YELLOW << "           Show version information\n";
-        std::cout << Colors::BLUE << "  -h, --help" << Colors::YELLOW << "              Show this help message\n";
-        std::cout << Colors::BLUE << "  -u, --update" << Colors::YELLOW << "            Update the tool to the latest version\n";
-        std::cout << Colors::BLUE << "  -r, --recursive" << Colors::YELLOW << "         Process directories recursively\n";
-        std::cout << Colors::BLUE << "  -v, --verbose" << Colors::YELLOW << "           Enable verbose output\n";
-        std::cout << Colors::BLUE << "  -t, --threads <n>" << Colors::YELLOW << "       Set maximum thread count (default: auto)\n";
-        std::cout << Colors::GREEN << "Examples:\n";
-        std::cout << Colors::MAGENTA << "  " << programName << " file.txt" << Colors::YELLOW << "               # Process single file\n";
-        std::cout << Colors::MAGENTA << "  " << programName << " *.txt" << Colors::YELLOW << "                  # Process all .txt files\n";
-        std::cout << Colors::MAGENTA << "  " << programName << " -r ./docs" << Colors::YELLOW << "              # Process all files in docs/ recursively\n";
-        std::cout << Colors::MAGENTA << "  " << programName << " -v -t 4 *.md" << Colors::YELLOW << "           # Process .md files with 4 threads, verbose\n\n";
-        std::cout << Colors::GREEN << "Configuration:\n";
-        std::cout << Colors::CYAN << "  The tool looks for '" << RuleFile::NAME << "' in:\n";
-        std::cout << Colors::CYAN << "    1. Current directory (higher priority)\n";
-        std::cout << Colors::CYAN << "    2. " << StoreDir::CONFIG_DIR << " (lower priority)\n";
-        std::cout << Colors::CYAN << "  Rules in higher priority locations override those in lower priority locations.\n"
-                  << Colors::RESET;
+
+        using kv_pair_t = std::pair<std::string, std::string>;
+        using kv_vector_t = std::vector<kv_pair_t>;
+
+        auto print_aligned_kv_pairs = [](const kv_vector_t &vec) {
+            size_t max_align_width = 0;
+            for (const auto &kv : vec) {
+                if (kv.first.size() > max_align_width) {
+                    max_align_width = kv.first.size();
+                }
+            }
+            size_t col_width = max_align_width + 4;
+
+            for (const auto &kv : vec) {
+                print_blue("  ", kv.first);
+
+                size_t printed_len = 2 + kv.first.size();
+                size_t pad = (col_width > printed_len) ? (col_width - printed_len) : 1;
+                for (size_t i = 0; i < pad; ++i) {
+                    print(" ");
+                }
+
+                println_yellow(kv.second);
+            }
+        };
+
+        println_green("Usage: ", programName, " [OPTIONS] <files...>");
+        println_cyan("High-performance punctuation replacement tool");
+
+        println_green("Options:");
+        kv_vector_t options = {
+            {"-V, --version", "Show version information"},
+            {"-h, --help", "Show this help message"},
+            {"-u, --update", "Update the tool to the latest version"},
+            {"-r, --recursive", "Process directories recursively"},
+            {"-v, --verbose", "Enable verbose output"},
+            {"-t, --threads <n>", "Set maximum thread count (default: auto)"}};
+        print_aligned_kv_pairs(options);
+
+        println_green("Examples:");
+        kv_vector_t examples = {
+            {programName + " file.txt", "Process single file"},
+            {programName + " *.txt", "Process all .txt files"},
+            {programName + " -r ./docs", "Process all files in docs/ recursively"},
+            {programName + " -v -t 4 *.md", "Process .md files with 4 threads, verbose"},
+        };
+        print_aligned_kv_pairs(examples);
+
+        println_green("Configuration:");
+        println_cyan("  The tool looks for '", RuleFile::NAME, "' in:");
+        println_cyan("    1. Current directory (higher priority)");
+        println_cyan("    2. ", StoreDir::CONFIG_DIR, " (lower priority)");
+        println_cyan("  Rules in higher priority locations override those in lower priority locations.");
     }
 
 } // namespace punp
