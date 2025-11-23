@@ -1,7 +1,7 @@
 // Rules:
 // - Comment: // This is a comment
 // - Add rule: REPLACE(FROM "old text", TO "new text");
-// - Delete rule: DEL("old text");
+// - Delete rule: DEL(FROM "old text");
 // - Protected region: PROTECT(START_MARKER "start", END_MARKER "end");
 // - Clear rules: CLEAR();
 

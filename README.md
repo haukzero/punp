@@ -7,6 +7,9 @@
 <details>
     <summary>Update Log</summary>
 
+- 2025.11.23:
+    - 强制统一了所有配置的语法格式为 `KEYWORD(ARG_KEY "str", ...);`, 要求 `DEL` 需要带 `ARG_KEY`: `FROM`
+    - 引入词法分析器 (Lexer) 和语法解析器 (Parser) 解析配置文件
 - 2025.11.22:
     - 大版本更新(v3.0.0): 重新定义规则编写格式, 修复在原本的规则编写格式下, 如果关键参数(替换文本, 保护区域)中包含规则关键字会导致规则无法正确识别的问题
     - 提供自更新功能, 通过比较本地版本与 github 仓库最新版本决定是否下载最新仓库并使用 cmake 编译安装
@@ -48,7 +51,7 @@
         - 函数可换行写
         - **如果被 `""` 包起来的字符串中需要含有 `"` 需要加转义字符 `\`**
     - 添加替换规则: `REPLACE(FROM "from str", TO "to str");`
-    - 删除替换规则: `DEL("replace str");`
+    - 删除替换规则: `DEL(FROM "replace str");`
     - 清除当前已导入的替换规则: `CLEAR();`
     - 添加保护区域规则: `PROTECT(START_MARKER "start marker", END_MARKER "end_marker");`
 - 除了上面指定的注释编写规则, 替换规则编写规则外, 其他语句均不能正确识别

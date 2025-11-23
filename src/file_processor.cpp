@@ -17,9 +17,9 @@ namespace punp {
           _writeback_stop(false) {
 
         // Initialize the AC automaton with the replacement map
-        _ac_automaton.build_from_map(config_manager.replacement_map());
+        _ac_automaton.build_from_map(*config_manager.replacement_map());
         // Set protected regions
-        _ac_automaton.set_protected_regions(config_manager.protected_regions());
+        _ac_automaton.set_protected_regions(*config_manager.protected_regions());
         // Start the writeback thread
         _writeback_thread = std::thread(&FileProcessor::writeback_worker, this);
     }
