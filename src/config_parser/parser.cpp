@@ -1,6 +1,6 @@
 #include "config_parser/parser.h"
 #include "color_print.h"
-#include "config_parser/common.h"
+#include "config_parser/token.h"
 #include "types.h"
 #include <algorithm>
 #include <string>

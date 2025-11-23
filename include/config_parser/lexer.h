@@ -1,6 +1,6 @@
 #pragma once
 
-#include "config_parser/common.h"
+#include "config_parser/token.h"
 
 namespace punp {
     namespace config_parser {

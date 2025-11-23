@@ -1,7 +1,7 @@
 #pragma once
 
-#include "config_parser/common.h"
 #include "config_parser/lexer.h"
+#include "config_parser/token.h"
 #include "types.h"
 #include <memory>
 #include <string>
