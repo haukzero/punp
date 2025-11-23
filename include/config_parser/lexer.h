@@ -19,7 +19,14 @@ namespace punp {
 
             char peek() const;
             char advance();
-            void skip_whitespace_and_comments();
+
+            void skip_trivia();
+            /**** spec skip type functions ****/
+            void skip_whitespace();
+            bool skip_single_line_comment();
+            bool skip_block_comment();
+            /**** spec skip type functions ****/
+
             Token make_token(const TokenType &type, const std::string &value) const;
             Token make_token(const TokenType &type, const std::string &value, size_t line, size_t column) const;
             Token scan_string();

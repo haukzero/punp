@@ -5,7 +5,7 @@
 namespace punp {
     namespace config_parser {
         Token Lexer::next_token() {
-            skip_whitespace_and_comments();
+            skip_trivia();
 
             if (_pos >= _input.size()) {
                 return make_token(TokenType::TOKEN_EOF, "");
@@ -36,20 +36,57 @@ namespace punp {
             }
         }
 
-        void Lexer::skip_whitespace_and_comments() {
-            while (_pos < _input.size()) {
-                char c = peek();
-                if (std::isspace(static_cast<unsigned char>(c))) {
-                    advance();
-                } else if (c == '/' && _pos + 1 < _input.size() && _input[_pos + 1] == '/') {
-                    // Skip comment until end of line
-                    while (peek() != '\n' && peek() != '\0') {
-                        advance();
-                    }
-                } else {
+        void Lexer::skip_trivia() {
+            while (true) {
+                skip_whitespace();
+
+                bool skipped = false;
+                skipped = skip_single_line_comment() || skipped;
+                skipped = skip_block_comment() || skipped;
+
+                if (!skipped) {
                     break;
                 }
             }
+        }
+
+        void Lexer::skip_whitespace() {
+            while (_pos < _input.size() && std::isspace(static_cast<unsigned char>(peek()))) {
+                advance();
+            }
+        }
+
+        bool Lexer::skip_single_line_comment() {
+            if (peek() == '/' && _pos + 1 < _input.size() && _input[_pos + 1] == '/') {
+                // consume "//"
+                advance();
+                advance();
+                // skip until end of line or EOF
+                while (peek() != '\n' && peek() != '\0') {
+                    advance();
+                }
+                return true;
+            }
+            return false;
+        }
+
+        bool Lexer::skip_block_comment() {
+            if (peek() == '/' && _pos + 1 < _input.size() && _input[_pos + 1] == '*') {
+                // consume "/*"
+                advance();
+                advance();
+                // skip until we find closing '*/' or EOF
+                while (_pos < _input.size()) {
+                    if (peek() == '*' && _pos + 1 < _input.size() && _input[_pos + 1] == '/') {
+                        advance(); // '*'
+                        advance(); // '/'
+                        break;
+                    }
+                    advance();
+                }
+                return true;
+            }
+            return false;
         }
 
         char Lexer::peek() const {
