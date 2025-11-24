@@ -57,7 +57,7 @@
     - 删除替换规则: `DEL(FROM "replace str");`
     - 清除当前已导入的替换规则: `CLEAR();`
     - 添加保护区域规则: `PROTECT(START_MARKER "start marker", END_MARKER "end_marker");`
-- 除了上面指定的注释编写规则, 替换规则编写规则外, 其他语句均不能正确识别
+- 除了上面指定的规则外, 其他语句均不能正确识别
 - 对于Linux, 先在`~/.local/share/punp/`中查找规则文件`.prules`, 然后再在当前目录中找
 
 > 其实不仅可以对标点做修改, 也可以对任意字符修改替换, 只要自定义了相关规则即可

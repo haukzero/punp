@@ -75,14 +75,23 @@ namespace punp {
                 // consume "/*"
                 advance();
                 advance();
-                // skip until we find closing '*/' or EOF
-                while (_pos < _input.size()) {
-                    if (peek() == '*' && _pos + 1 < _input.size() && _input[_pos + 1] == '/') {
+
+                int depth = 1;
+
+                while (_pos < _input.size() && depth > 0) {
+                    if (peek() == '/' && _pos + 1 < _input.size() && _input[_pos + 1] == '*') {
+                        // Nested comment start
+                        depth++;
+                        advance(); // '/'
+                        advance(); // '*'
+                    } else if (peek() == '*' && _pos + 1 < _input.size() && _input[_pos + 1] == '/') {
+                        // Comment end
+                        depth--;
                         advance(); // '*'
                         advance(); // '/'
-                        break;
+                    } else {
+                        advance();
                     }
-                    advance();
                 }
                 return true;
             }
