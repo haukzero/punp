@@ -1,34 +1,47 @@
 #pragma once
 
 #include <iostream>
-#include <sstream>
+#include <string_view>
 #include <utility>
 
 namespace punp {
 
     namespace Colors {
-        constexpr const char *RESET = "\033[0m";
-        constexpr const char *RED = "\033[31m";
-        constexpr const char *GREEN = "\033[32m";
-        constexpr const char *YELLOW = "\033[33m";
-        constexpr const char *BLUE = "\033[34m";
-        constexpr const char *MAGENTA = "\033[35m";
-        constexpr const char *CYAN = "\033[36m";
+        inline constexpr std::string_view RESET = "\033[0m";
+        inline constexpr std::string_view RED = "\033[31m";
+        inline constexpr std::string_view GREEN = "\033[32m";
+        inline constexpr std::string_view YELLOW = "\033[33m";
+        inline constexpr std::string_view BLUE = "\033[34m";
+        inline constexpr std::string_view MAGENTA = "\033[35m";
+        inline constexpr std::string_view CYAN = "\033[36m";
     }
 
     template <typename... Args>
-    inline void colored_print(const char *color_code, Args &&...args) {
-        std::ostringstream oss;
-        (oss << ... << args);
-        std::cout << color_code << oss.str() << Colors::RESET;
+    inline void colored_print(std::string_view color_code, Args &&...args) {
+        std::cout << color_code;
+        (std::cout << ... << std::forward<Args>(args));
+        std::cout << Colors::RESET;
     }
 
     template <typename... Args>
-    inline void colored_println(const char *color_code, Args &&...args) {
-        std::ostringstream oss;
-        (oss << ... << args);
-        std::cout << color_code << oss.str() << '\n'
-                  << Colors::RESET;
+    inline void colored_println(std::string_view color_code, Args &&...args) {
+        std::cout << color_code;
+        (std::cout << ... << std::forward<Args>(args));
+        std::cout << Colors::RESET << '\n';
+    }
+
+    template <typename... Args>
+    inline void colored_print_err(std::string_view color_code, Args &&...args) {
+        std::cerr << color_code;
+        (std::cerr << ... << std::forward<Args>(args));
+        std::cerr << Colors::RESET;
+    }
+
+    template <typename... Args>
+    inline void colored_println_err(std::string_view color_code, Args &&...args) {
+        std::cerr << color_code;
+        (std::cerr << ... << std::forward<Args>(args));
+        std::cerr << Colors::RESET << '\n';
     }
 
 #define PUNP_DEFINE_COLOR_PRINT(FUNC_NAME, COLOR_CONST)          \
@@ -67,18 +80,12 @@ namespace punp {
 
     template <typename... Args>
     inline void warn(Args &&...args) {
-        std::ostringstream oss;
-        (oss << ... << args);
-        std::cerr << Colors::YELLOW << "Warn: " << oss.str() << '\n'
-                  << Colors::RESET;
+        colored_println_err(Colors::YELLOW, "Warn: ", std::forward<Args>(args)...);
     }
 
     template <typename... Args>
     inline void error(Args &&...args) {
-        std::ostringstream oss;
-        (oss << ... << args);
-        std::cerr << Colors::RED << "Error: " << oss.str() << '\n'
-                  << Colors::RESET;
+        colored_println_err(Colors::RED, "Error: ", std::forward<Args>(args)...);
     }
 
 } // namespace punp
