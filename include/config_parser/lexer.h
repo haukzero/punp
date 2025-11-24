@@ -20,7 +20,7 @@ namespace punp {
             char peek() const;
             char advance();
 
-            void skip_trivia();
+            void skip_trivial();
             /**** spec skip type functions ****/
             void skip_whitespace();
             bool skip_single_line_comment();

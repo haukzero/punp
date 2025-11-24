@@ -5,7 +5,7 @@
 namespace punp {
     namespace config_parser {
         Token Lexer::next_token() {
-            skip_trivia();
+            skip_trivial();
 
             if (_pos >= _input.size()) {
                 return make_token(TokenType::TOKEN_EOF, "");
@@ -36,7 +36,7 @@ namespace punp {
             }
         }
 
-        void Lexer::skip_trivia() {
+        void Lexer::skip_trivial() {
             while (true) {
                 skip_whitespace();
 
