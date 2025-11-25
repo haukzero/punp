@@ -386,7 +386,7 @@ namespace punp {
             }
 
             output_file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
-            output_file << complete_content;
+            output_file << complete_content << '\n';
             output_file.close();
 
             return true;
