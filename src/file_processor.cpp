@@ -5,7 +5,6 @@
 #include "thread_pool.h"
 #include "types.h"
 #include <algorithm>
-#include <codecvt>
 #include <cstddef>
 #include <fstream>
 #include <sys/stat.h>
@@ -170,7 +169,7 @@ namespace punp {
             if (!input_file) {
                 return nullptr;
             }
-            input_file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
+            input_file.imbue(std::locale(std::locale(), new char_convert_t));
 
             text_t content;
             if (file_size > 0) {
@@ -368,25 +367,17 @@ namespace punp {
                 return true;
             }
 
-            text_t complete_content;
-            size_t total_size = 0;
-            for (const auto &page_content : file_content->processed_pages) {
-                total_size += page_content.size();
-            }
-            complete_content.reserve(total_size);
-
-            for (const auto &page_content : file_content->processed_pages) {
-                complete_content += page_content;
-            }
-
             std::wofstream output_file(file_content->filename);
             if (!output_file) {
                 error("Cannot open file for writing: ", file_content->filename);
                 return false;
             }
 
-            output_file.imbue(std::locale(std::locale(), new std::codecvt_utf8<wchar_t>));
-            output_file << complete_content << '\n';
+            output_file.imbue(std::locale(std::locale(), new char_convert_t));
+            for (const auto &page_content : file_content->processed_pages) {
+                output_file << page_content;
+            }
+            output_file << '\n';
             output_file.close();
 
             return true;

@@ -12,7 +12,8 @@
 namespace punp {
 
     using text_t = std::wstring;
-    using convert_t = std::wstring_convert<std::codecvt_utf8<wchar_t>>;
+    using char_convert_t = std::codecvt_utf8<wchar_t>;
+    using convert_t = std::wstring_convert<char_convert_t>;
     using view_t = std::wstring_view;
 
     // Type definitions
