@@ -8,7 +8,8 @@ namespace punp {
 
     std::vector<std::string> FileFinder::find_files(
         const std::vector<std::string> &patterns,
-        bool recursive) const {
+        bool recursive,
+        const std::vector<std::string> &extensions) const {
 
         std::vector<std::string> all_files;
 
@@ -44,6 +45,11 @@ namespace punp {
         // Remove duplicates and sort
         std::sort(all_files.begin(), all_files.end());
         all_files.erase(std::unique(all_files.begin(), all_files.end()), all_files.end());
+
+        // Filter by extension if specified
+        if (!extensions.empty()) {
+            all_files = filter_by_extension(all_files, extensions);
+        }
 
         return all_files;
     }
@@ -180,6 +186,44 @@ namespace punp {
         }
 
         return files;
+    }
+
+    bool FileFinder::has_extension(const std::string &path, const std::vector<std::string> &extensions) const {
+        try {
+            std::filesystem::path file_path(path);
+            std::string ext = file_path.extension().string();
+
+            // Remove leading dot from extension
+            if (!ext.empty() && ext.front() == '.') {
+                ext = ext.substr(1);
+            }
+
+            // Check if this extension is in the list
+            for (const auto &target_ext : extensions) {
+                if (ext == target_ext) {
+                    return true;
+                }
+            }
+            return false;
+        } catch (const std::exception &) {
+            return false;
+        }
+    }
+
+    std::vector<std::string> FileFinder::filter_by_extension(
+        const std::vector<std::string> &files,
+        const std::vector<std::string> &extensions) const {
+
+        std::vector<std::string> filtered;
+        filtered.reserve(files.size());
+
+        for (const auto &file : files) {
+            if (has_extension(file, extensions)) {
+                filtered.emplace_back(file);
+            }
+        }
+
+        return filtered;
     }
 
 } // namespace punp

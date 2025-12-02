@@ -13,52 +13,21 @@ namespace punp {
             i += consumed - 1; // Adjust index for consumed arguments
         }
 
-        return !_inputs.empty() || _show_help || _show_version || _update;
+        return !_inputs.empty() ||
+               !_config.extensions.empty() ||
+               _show_help ||
+               _show_version ||
+               _update;
     }
 
     int ArgumentParser::process_args(const std::string &arg, const char *next_arg) {
-        if (arg == "-V" || arg == "--version") {
-            _show_version = true;
-            return 1;
-        }
-
-        if (arg == "-h" || arg == "--help") {
-            _show_help = true;
-            return 1;
-        }
-
-        if (arg == "-u" || arg == "--update") {
-            _update = true;
-            return 1;
-        }
-
-        if (arg == "-r" || arg == "--recursive") {
-            _config.recursive = true;
-            return 1;
-        }
-
-        if (arg == "-v" || arg == "--verbose") {
-            _config.verbose = true;
-            return 1;
-        }
-
-        if (arg == "-t" || arg == "--threads") {
-            if (next_arg) {
-                try {
-                    _config.max_threads = std::stoul(next_arg);
-                    return 2;
-                } catch (const std::exception &) {
-                    warn("Invalid thread count '", next_arg, "', using auto-detection");
-                    return 2;
-                }
-            } else {
-                error("--threads requires a number");
-                return 1;
-            }
+        auto it = _handlers.find(arg);
+        if (it != _handlers.end()) {
+            return (this->*(it->second))(next_arg);
         }
 
         // If it starts with -, it's an unknown option
-        if (arg.front() == '-') {
+        if (!arg.empty() && arg.front() == '-') {
             error("Unknown option '", arg, "'");
             return 1;
         }
@@ -109,7 +78,8 @@ namespace punp {
             {"-u, --update", "Update the tool to the latest version"},
             {"-r, --recursive", "Process directories recursively"},
             {"-v, --verbose", "Enable verbose output"},
-            {"-t, --threads <n>", "Set maximum thread count (default: auto)"}};
+            {"-t, --threads <n>", "Set maximum thread count (default: auto)"},
+            {"-e, --extension <ext>", "Only process files with specified extension"}};
         print_aligned_kv_pairs(options);
 
         println_green("Examples:");
@@ -118,6 +88,7 @@ namespace punp {
             {programName + " *.txt", "Process all .txt files"},
             {programName + " -r ./docs", "Process all files in docs/ recursively"},
             {programName + " -v -t 4 *.md", "Process .md files with 4 threads, verbose"},
+            {programName + " -r ./ -e md -e txt", "Process all .md and .txt files in current directory recursively"},
         };
         print_aligned_kv_pairs(examples);
 
@@ -126,6 +97,65 @@ namespace punp {
         println_cyan("    1. Current directory (higher priority)");
         println_cyan("    2. ", StoreDir::CONFIG_DIR, " (lower priority)");
         println_cyan("  Rules in higher priority locations override those in lower priority locations.");
+    }
+
+} // namespace punp
+
+// NOTE: This section implements the specific arg handler methods.
+namespace punp {
+    int ArgumentParser::version_handler(const char *) {
+        _show_version = true;
+        return 1;
+    }
+
+    int ArgumentParser::help_handler(const char *) {
+        _show_help = true;
+        return 1;
+    }
+
+    int ArgumentParser::verbose_handler(const char *) {
+        _config.verbose = true;
+        return 1;
+    }
+
+    int ArgumentParser::update_handler(const char *) {
+        _update = true;
+        return 1;
+    }
+
+    int ArgumentParser::recursive_handler(const char *) {
+        _config.recursive = true;
+        return 1;
+    }
+
+    int ArgumentParser::threads_handler(const char *next_arg) {
+        if (next_arg) {
+            try {
+                _config.max_threads = std::stoul(next_arg);
+                return 2;
+            } catch (const std::exception &) {
+                warn("Invalid thread count '", next_arg, "', using auto-detection");
+                return 2;
+            }
+        } else {
+            error("--threads requires a number");
+            return 1;
+        }
+    }
+
+    int ArgumentParser::extension_handler(const char *next_arg) {
+        if (next_arg) {
+            std::string ext = next_arg;
+            // Remove leading dot if present
+            if (!ext.empty() && ext.front() == '.') {
+                ext = ext.substr(1);
+            }
+            _config.extensions.emplace_back(ext);
+            return 2;
+        } else {
+            error("--extension requires a file extension");
+            return 1;
+        }
     }
 
 } // namespace punp

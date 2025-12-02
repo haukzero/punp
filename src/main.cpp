@@ -37,6 +37,11 @@ int main(int argc, char *argv[]) {
 
     auto &config = parser.config();
 
+    if (!config.extensions.empty() && parser.inputs().empty()) {
+        error("When using `-e`/`--extension`, you must specify files or directories to process");
+        return 1;
+    }
+
     // Load configuration
     ConfigManager config_manager;
     if (!config_manager.load(config.verbose)) {
@@ -51,7 +56,10 @@ int main(int argc, char *argv[]) {
 
     // Find files to process
     FileFinder file_finder;
-    auto file_paths = file_finder.find_files(parser.inputs(), config.recursive);
+    auto file_paths = file_finder.find_files(
+        parser.inputs(),
+        config.recursive,
+        config.extensions);
 
     if (file_paths.empty()) {
         error("No files found to process");

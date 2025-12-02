@@ -6,7 +6,8 @@
 
 <details>
     <summary>Update Log</summary>
-
+- 2025.12.2
+    - 添加指定扩展名过滤的可选参数
 - 2025.11.23:
     - 强制统一了所有配置的语法格式为 `KEYWORD(ARG_KEY "str", ...);`, 要求 `DEL` 需要带 `ARG_KEY`: `FROM`
     - 引入词法分析器 (Lexer) 和语法解析器 (Parser) 解析配置文件
@@ -81,6 +82,7 @@ cmake --install ./build
     - `-h`, `--help`: 使用说明
     - `-u`, `--update`: 自更新
     - `-r`, `--recursive`: 对一个目录递归的处理里面的文件
+    - `-e`, `--extension`: 对导入文件路径中的文件按照文件后缀名过滤, 是否加 `.` 均可
     - `-v`, `--verbose`: 详细的结果输出
     - `-t`, `--threads <n>`: 使用的最大线程数, `n`为一个正整数, 默认情况下, 程序将使用 `min(n_task, hw_max_threads)` 个线程
 - 路径支持使用`*`和`?`通配符, 其中`*`可代表任意零个或多个字符, `?`可以代表任意单个字符
