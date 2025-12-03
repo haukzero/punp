@@ -110,6 +110,22 @@ namespace punp {
         println_cyan("  Rules in higher priority locations override those in lower priority locations.");
     }
 
+    std::vector<std::string> ArgumentParser::split_with_commas(const std::string &s) const {
+        std::vector<std::string> result;
+        size_t start = 0;
+        while (start < s.size()) {
+            size_t comma = s.find(',', start);
+            size_t len = (comma == std::string::npos) ? (s.size() - start) : (comma - start);
+            if (len > 0) {
+                result.emplace_back(s.data() + start, len);
+            }
+            if (comma == std::string::npos)
+                break;
+            start = comma + 1;
+        }
+        return result;
+    }
+
 } // namespace punp
 
 // NOTE: This section implements the specific arg handler methods.
@@ -156,12 +172,16 @@ namespace punp {
 
     int ArgumentParser::extension_handler(const char *next_arg) {
         if (next_arg) {
-            std::string ext = next_arg;
-            // Remove leading dot if present
-            if (!ext.empty() && ext.front() == '.') {
-                ext = ext.substr(1);
+            auto exts = split_with_commas(next_arg);
+            for (auto &ext : exts) {
+                if (!ext.empty()) {
+                    // Remove leading dot if present
+                    if (ext.front() == '.') {
+                        ext = ext.substr(1);
+                    }
+                    _config.extensions.emplace_back(ext);
+                }
             }
-            _config.extensions.emplace_back(ext);
             return 2;
         } else {
             error("--extension requires a file extension");
@@ -171,18 +191,11 @@ namespace punp {
 
     int ArgumentParser::exclude_handler(const char *next_arg) {
         if (next_arg) {
-            std::string path = next_arg;
-            // Support comma-separated excludes in a single -E value
-            size_t start = 0;
-            while (start < path.size()) {
-                size_t comma = path.find(',', start);
-                std::string token = (comma == std::string::npos) ? path.substr(start) : path.substr(start, comma - start);
-                if (!token.empty()) {
-                    _config.exclude_paths.emplace_back(token);
+            auto paths = split_with_commas(next_arg);
+            for (auto &p : paths) {
+                if (!p.empty()) {
+                    _config.exclude_paths.emplace_back(p);
                 }
-                if (comma == std::string::npos)
-                    break;
-                start = comma + 1;
             }
             return 2;
         } else {

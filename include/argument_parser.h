@@ -25,6 +25,7 @@ namespace punp {
 
     private:
         int process_args(const std::string &arg, const char *next_arg);
+        std::vector<std::string> split_with_commas(const std::string &s) const;
 
     private:
         // store arg parse results
