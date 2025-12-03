@@ -9,15 +9,6 @@
 namespace punp {
 
     class ArgumentParser {
-    private:
-        std::vector<std::string> _inputs;
-        ProcessingConfig _config;
-        bool _show_version = false;
-        bool _show_help = false;
-        bool _update = false;
-
-        int process_args(const std::string &arg, const char *next_arg);
-
     public:
         ArgumentParser() = default;
         ~ArgumentParser() = default;
@@ -33,38 +24,38 @@ namespace punp {
         static void display_help(const std::string &name);
 
     private:
+        int process_args(const std::string &arg, const char *next_arg);
+
+    private:
+        // store arg parse results
+        std::vector<std::string> _inputs;
+        ProcessingConfig _config;
+        bool _show_version = false;
+        bool _show_help = false;
+        bool _update = false;
+
+    private:
+        // handlers
         using arg_handler_t = int (ArgumentParser::*)(const char *next_arg);
         using arg_handler_map_t = std::unordered_map<std::string, arg_handler_t>;
 
+#define PUNP_ADD_ARG_HANDLER(ARG_SHORT_NAME, ARG_LONG_NAME, HANDLER_FUNC) \
+    {ARG_SHORT_NAME, &ArgumentParser::HANDLER_FUNC},                      \
+    { ARG_LONG_NAME, &ArgumentParser::HANDLER_FUNC }
+
         arg_handler_map_t _handlers = {
-            // version
-            {"-V", &ArgumentParser::version_handler},
-            {"--version", &ArgumentParser::version_handler},
+            PUNP_ADD_ARG_HANDLER("-V", "--version", version_handler),
+            PUNP_ADD_ARG_HANDLER("-h", "--help", help_handler),
+            PUNP_ADD_ARG_HANDLER("-v", "--verbose", verbose_handler),
+            PUNP_ADD_ARG_HANDLER("-u", "--update", update_handler),
+            PUNP_ADD_ARG_HANDLER("-r", "--recursive", recursive_handler),
+            PUNP_ADD_ARG_HANDLER("-t", "--threads", threads_handler),
+            PUNP_ADD_ARG_HANDLER("-e", "--extension", extension_handler),
+            PUNP_ADD_ARG_HANDLER("-E", "--exclude", exclude_handler),
 
-            // help
-            {"-h", &ArgumentParser::help_handler},
-            {"--help", &ArgumentParser::help_handler},
-
-            // verbose
-            {"-v", &ArgumentParser::verbose_handler},
-            {"--verbose", &ArgumentParser::verbose_handler},
-
-            // self update
-            {"-u", &ArgumentParser::update_handler},
-            {"--update", &ArgumentParser::update_handler},
-
-            // recursive
-            {"-r", &ArgumentParser::recursive_handler},
-            {"--recursive", &ArgumentParser::recursive_handler},
-
-            // threads
-            {"-t", &ArgumentParser::threads_handler},
-            {"--threads", &ArgumentParser::threads_handler},
-
-            // file extension
-            {"-e", &ArgumentParser::extension_handler},
-            {"--extension", &ArgumentParser::extension_handler},
+            // add more handlers here
         };
+#undef PUNP_ADD_ARG_HANDLER
 
         /*****  Handler methods *****/
         int version_handler(const char *next_arg);
@@ -74,6 +65,7 @@ namespace punp {
         int verbose_handler(const char *next_arg);
         int threads_handler(const char *next_arg);
         int extension_handler(const char *next_arg);
+        int exclude_handler(const char *next_arg);
         /*****  Handler methods *****/
     };
 

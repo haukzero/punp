@@ -59,7 +59,8 @@ int main(int argc, char *argv[]) {
     auto file_paths = file_finder.find_files(
         parser.inputs(),
         config.recursive,
-        config.extensions);
+        config.extensions,
+        config.exclude_paths);
 
     if (file_paths.empty()) {
         error("No files found to process");

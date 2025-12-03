@@ -79,16 +79,27 @@ namespace punp {
             {"-r, --recursive", "Process directories recursively"},
             {"-v, --verbose", "Enable verbose output"},
             {"-t, --threads <n>", "Set maximum thread count (default: auto)"},
-            {"-e, --extension <ext>", "Only process files with specified extension"}};
+            {"-e, --extension <ext>", "Only process files with specified extension"},
+            {"-E, --exclude <path>", "Exclude specified file/dir or wildcard pattern from processing"},
+        };
         print_aligned_kv_pairs(options);
 
         println_green("Examples:");
         kv_vector_t examples = {
-            {programName + " file.txt", "Process single file"},
-            {programName + " *.txt", "Process all .txt files"},
-            {programName + " -r ./docs", "Process all files in docs/ recursively"},
-            {programName + " -v -t 4 *.md", "Process .md files with 4 threads, verbose"},
-            {programName + " -r ./ -e md -e txt", "Process all .md and .txt files in current directory recursively"},
+            {programName + " file.txt",
+             "Process single file"},
+            {programName + " *.txt",
+             "Process all .txt files"},
+            {programName + " -r ./docs",
+             "Process all files in docs/ recursively"},
+            {programName + " -v -t 4 *.md",
+             "Process .md files with 4 threads, verbose"},
+            {programName + " -r ./ -e md -e txt",
+             "Process all .md and .txt files in current directory recursively"},
+            {programName + " -r ./ -E ./docs",
+             "Process all files in current directory recursively, excluding docs/"},
+            {programName + " -r ./ -E 'build/,.cache/,.git*'",
+             "Process recursively but exclude build/, .cache/ and paths matching .git*"},
         };
         print_aligned_kv_pairs(examples);
 
@@ -154,6 +165,28 @@ namespace punp {
             return 2;
         } else {
             error("--extension requires a file extension");
+            return 1;
+        }
+    }
+
+    int ArgumentParser::exclude_handler(const char *next_arg) {
+        if (next_arg) {
+            std::string path = next_arg;
+            // Support comma-separated excludes in a single -E value
+            size_t start = 0;
+            while (start < path.size()) {
+                size_t comma = path.find(',', start);
+                std::string token = (comma == std::string::npos) ? path.substr(start) : path.substr(start, comma - start);
+                if (!token.empty()) {
+                    _config.exclude_paths.emplace_back(token);
+                }
+                if (comma == std::string::npos)
+                    break;
+                start = comma + 1;
+            }
+            return 2;
+        } else {
+            error("--exclude requires a file or directory path");
             return 1;
         }
     }
