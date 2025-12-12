@@ -13,16 +13,31 @@ namespace punp {
         const std::vector<std::string> &exclude_paths) const {
 
         std::vector<std::string> all_files;
+        ExcludeRules rules = parse_excludes(exclude_paths);
 
         auto expand_one_pattern =
-            [this, recursive, &exclude_paths](const std::string &pattern) {
+            [this, recursive, &extensions, &rules](const std::string &pattern) {
                 std::vector<std::string> matched_files;
                 if (is_dir(pattern)) {
-                    matched_files = find_files_in_dir(pattern, recursive, exclude_paths);
+                    matched_files = find_files_in_dir(pattern, recursive, extensions, rules);
                 } else if (contains_wildcard(pattern)) {
                     matched_files = expand_glob(pattern);
+                    if (!extensions.empty()) {
+                        matched_files = filter_by_extension(matched_files, extensions);
+                    }
+                    // Filter by excludes
+                    matched_files.erase(
+                        std::remove_if(matched_files.begin(), matched_files.end(),
+                                       [this, &rules](const std::string &file) {
+                                           return is_excluded(std::filesystem::path(file), rules, true);
+                                       }),
+                        matched_files.end());
                 } else if (is_file(pattern)) {
-                    matched_files.emplace_back(pattern);
+                    if (extensions.empty() || has_extension(pattern, extensions)) {
+                        if (!is_excluded(std::filesystem::path(pattern), rules, true)) {
+                            matched_files.emplace_back(pattern);
+                        }
+                    }
                 } else {
                     warn("'", pattern, "' not found");
                 }
@@ -49,76 +64,64 @@ namespace punp {
         std::sort(all_files.begin(), all_files.end());
         all_files.erase(std::unique(all_files.begin(), all_files.end()), all_files.end());
 
-        // Filter by extension if specified
-        if (!extensions.empty()) {
-            all_files = filter_by_extension(all_files, extensions);
-        }
-
-        // Filter out excluded files/dirs
-        if (!exclude_paths.empty()) {
-            all_files.erase(
-                std::remove_if(all_files.begin(), all_files.end(),
-                               [this, &exclude_paths](const std::string &file) {
-                                   return is_excluded(file, exclude_paths);
-                               }),
-                all_files.end());
-        }
-
         return all_files;
     }
 
     std::vector<std::string> FileFinder::find_files_in_dir(
         const std::string &dir,
         bool recursive,
-        const std::vector<std::string> &exclude_paths) const {
+        const std::vector<std::string> &extensions,
+        const ExcludeRules &rules) const {
 
         std::vector<std::string> files;
 
-        auto handle_entry =
-            [this, &files, &exclude_paths](const std::filesystem::directory_entry &entry) {
-                try {
-                    const auto p = entry.path();
-                    auto s = p.string();
-                    if (is_excluded(s, exclude_paths)) {
-                        return; // caller will handle recursion disabling for directories
-                    }
-                    if (entry.is_regular_file()) {
-                        files.emplace_back(s);
-                    }
-                } catch (const std::filesystem::filesystem_error &e) {
-                    error("Accessing entry '", entry.path().string(), "': ", e.what());
-                }
-            };
-
         try {
             if (recursive) {
-                std::filesystem::recursive_directory_iterator it(dir);
+                std::filesystem::recursive_directory_iterator it(dir, std::filesystem::directory_options::skip_permission_denied);
                 std::filesystem::recursive_directory_iterator end;
                 for (; it != end; ++it) {
                     try {
                         const auto &entry = *it;
-                        if (is_excluded(entry.path().string(), exclude_paths)) {
+
+                        // Check exclude
+                        if (is_excluded(entry.path(), rules, false)) {
                             if (entry.is_directory()) {
                                 it.disable_recursion_pending();
                             }
                             continue;
                         }
-                        handle_entry(entry);
+
+                        if (entry.is_directory()) {
+                            continue;
+                        }
+
+                        if (entry.is_regular_file()) {
+                            std::string path_str = entry.path().string();
+                            if (extensions.empty() || has_extension(path_str, extensions)) {
+                                if (path_str.find(RuleFile::NAME) == std::string::npos) {
+                                    files.emplace_back(std::move(path_str));
+                                }
+                            }
+                        }
                     } catch (const std::filesystem::filesystem_error &e) {
                         error("Accessing entry '", it->path().string(), "': ", e.what());
                         continue;
                     }
                 }
             } else {
-                files = get_files_from_dir(dir);
-                // Filter non-recursive files by excludes
-                if (!exclude_paths.empty()) {
-                    files.erase(
-                        std::remove_if(files.begin(), files.end(),
-                                       [this, &exclude_paths](const std::string &file) {
-                                           return is_excluded(file, exclude_paths);
-                                       }),
-                        files.end());
+                for (const auto &entry : std::filesystem::directory_iterator(dir)) {
+                    if (entry.is_regular_file()) {
+                        if (is_excluded(entry.path(), rules, false)) {
+                            continue;
+                        }
+
+                        std::string path_str = entry.path().string();
+                        if (extensions.empty() || has_extension(path_str, extensions)) {
+                            if (path_str.find(RuleFile::NAME) == std::string::npos) {
+                                files.emplace_back(std::move(path_str));
+                            }
+                        }
+                    }
                 }
             }
         } catch (const std::filesystem::filesystem_error &e) {
@@ -234,22 +237,6 @@ namespace punp {
         return pattern_pos >= pattern.length() && filename_pos >= filename.length();
     }
 
-    std::vector<std::string> FileFinder::get_files_from_dir(const std::string &directory) const {
-        std::vector<std::string> files;
-
-        try {
-            for (const auto &entry : std::filesystem::directory_iterator(directory)) {
-                if (entry.is_regular_file()) {
-                    files.push_back(entry.path().string());
-                }
-            }
-        } catch (const std::filesystem::filesystem_error &e) {
-            error("Reading directory '", directory, "': ", e.what());
-        }
-
-        return files;
-    }
-
     bool FileFinder::has_extension(const std::string &path, const std::vector<std::string> &extensions) const {
         try {
             std::filesystem::path file_path(path);
@@ -288,85 +275,151 @@ namespace punp {
         return filtered;
     }
 
-    bool FileFinder::is_excluded(const std::string &file, const std::vector<std::string> &excludes) const {
+    FileFinder::ExcludeRules FileFinder::parse_excludes(const std::vector<std::string> &excludes) const {
+        ExcludeRules rules;
         namespace fs = std::filesystem;
 
-        auto match_suffixes =
-            [this](const fs::path &file_abs, const std::string &pattern) {
-                std::vector<fs::path> components;
-                for (const auto &c : file_abs)
-                    components.push_back(c);
-                for (size_t i = 0; i < components.size(); ++i) {
-                    fs::path suffix_path;
-                    for (size_t j = i; j < components.size(); ++j)
-                        suffix_path /= components[j];
-                    if (match_glob(suffix_path.string(), pattern))
-                        return true;
-                }
-                return false;
-            };
+        for (const auto &ex_in : excludes) {
+            std::string ex = strip_trailing_slashes(ex_in);
+            if (ex.empty())
+                continue;
 
-        try {
-            fs::path file_path(file);
-            auto file_abs = fs::absolute(file_path).lexically_normal();
-            std::string filename = file_path.filename().string();
-
-            for (const auto &ex_in : excludes) {
-                std::string ex = strip_trailing_slashes(ex_in);
-                if (ex.empty())
-                    continue;
-
-                // If it contains wildcard
-                if (contains_wildcard(ex)) {
-                    if (ex.find('/') != std::string::npos || ex.find('\\') != std::string::npos) {
-                        fs::path ex_path(ex);
-                        if (ex_path.is_absolute()) {
+            if (contains_wildcard(ex)) {
+                if (ex.find('/') != std::string::npos || ex.find('\\') != std::string::npos) {
+                    fs::path ex_path(ex);
+                    if (ex_path.is_absolute()) {
+                        try {
                             auto ex_abs_path = fs::absolute(ex_path).lexically_normal();
-                            if (match_glob(file_abs.string(), ex_abs_path.string()))
-                                return true;
-                        } else {
-                            if (match_suffixes(file_abs, ex))
-                                return true;
+                            rules.abs_path_globs.push_back(ex_abs_path.string());
+                        } catch (...) {
+                            rules.abs_path_globs.push_back(ex);
                         }
                     } else {
-                        // wildcard without path: match file name and any path component name
-                        if (match_glob(filename, ex))
-                            return true;
-                        for (const auto &comp : file_path) {
-                            if (match_glob(comp.string(), ex))
-                                return true;
-                        }
+                        rules.suffix_globs.push_back(ex);
                     }
                 } else {
-                    // No wildcard: check exact path, directory prefix, or component/name match
-                    fs::path ex_path(ex);
-                    auto ex_abs = fs::absolute(ex_path).lexically_normal();
-                    if (ex_abs == file_abs)
+                    rules.name_globs.push_back(ex);
+                }
+            } else {
+                // No wildcard
+                if (ex.find('/') != std::string::npos || ex.find('\\') != std::string::npos) {
+                    // Path
+                    try {
+                        fs::path ex_path(ex);
+                        auto ex_abs = fs::absolute(ex_path).lexically_normal();
+                        rules.abs_paths.push_back(ex_abs.string());
+                    } catch (...) {
+                        // Ignore invalid paths
+                    }
+                } else {
+                    // Name
+                    rules.names.push_back(ex);
+                }
+            }
+        }
+        return rules;
+    }
+
+    bool FileFinder::is_excluded(const std::filesystem::path &path, const ExcludeRules &rules, bool check_components) const {
+        namespace fs = std::filesystem;
+        std::string filename = path.filename().string();
+
+        // 1. Fast check: Exact Name Match
+        for (const auto &name : rules.names) {
+            if (filename == name)
+                return true;
+        }
+
+        // 2. Fast check: Name Glob
+        for (const auto &pattern : rules.name_globs) {
+            if (match_glob(filename, pattern))
+                return true;
+        }
+
+        // If we need to check components (e.g. for non-recursive file list), do it here
+        if (check_components) {
+            for (const auto &comp : path) {
+                std::string comp_str = comp.string();
+                for (const auto &name : rules.names) {
+                    if (comp_str == name)
                         return true;
-
-                    if (fs::exists(ex_abs) && fs::is_directory(ex_abs)) {
-                        std::string dir_str = ex_abs.string();
-                        if (!dir_str.empty() && dir_str.back() != fs::path::preferred_separator)
-                            dir_str.push_back(fs::path::preferred_separator);
-                        auto file_str = file_abs.string();
-                        if (file_str.rfind(dir_str, 0) == 0)
-                            return true;
-                    }
-
-                    if (!ex_path.is_absolute()) {
-                        for (const auto &comp : file_path) {
-                            if (comp.string() == ex)
-                                return true;
-                        }
-                    }
-
-                    if (ex == filename)
+                }
+                for (const auto &pattern : rules.name_globs) {
+                    if (match_glob(comp_str, pattern))
                         return true;
                 }
             }
-        } catch (const std::exception &e) {
-            error("Checking exclude for '", file, "' failed: ", e.what());
+        }
+
+        // 3. Path checks (Expensive)
+        if (rules.abs_paths.empty() && rules.abs_path_globs.empty() && rules.suffix_globs.empty())
             return false;
+
+        // Lazy absolute path
+        fs::path abs_path_cache;
+        bool abs_path_computed = false;
+        auto get_abs_path = [&]() -> const fs::path & {
+            if (!abs_path_computed) {
+                try {
+                    abs_path_cache = fs::absolute(path).lexically_normal();
+                } catch (...) {
+                    abs_path_cache = path;
+                }
+                abs_path_computed = true;
+            }
+            return abs_path_cache;
+        };
+
+        if (!rules.abs_paths.empty()) {
+            const auto &abs = get_abs_path();
+            std::string abs_str = abs.string();
+            for (const auto &rule_abs : rules.abs_paths) {
+                if (abs_str == rule_abs)
+                    return true;
+
+                // Check directory prefix
+                // rule_abs is guaranteed to not have trailing slash by parse_excludes (strip_trailing_slashes)
+                // But we need to ensure we match directory boundary
+                if (abs_str.size() > rule_abs.size() &&
+                    abs_str.compare(0, rule_abs.size(), rule_abs) == 0 &&
+                    (abs_str[rule_abs.size()] == fs::path::preferred_separator || abs_str[rule_abs.size()] == '/')) {
+                    return true;
+                }
+            }
+        }
+
+        if (!rules.abs_path_globs.empty()) {
+            const auto &abs = get_abs_path();
+            std::string abs_str = abs.string();
+            for (const auto &pattern : rules.abs_path_globs) {
+                if (match_glob(abs_str, pattern))
+                    return true;
+            }
+        }
+
+        if (!rules.suffix_globs.empty()) {
+            const auto &abs = get_abs_path();
+            // Re-implement match_suffixes logic efficiently?
+            // Or just use the lambda logic from before
+            auto match_suffixes_internal =
+                [this](const fs::path &file_abs, const std::string &pattern) {
+                    std::vector<fs::path> components;
+                    for (const auto &c : file_abs)
+                        components.push_back(c);
+                    for (size_t i = 0; i < components.size(); ++i) {
+                        fs::path suffix_path;
+                        for (size_t j = i; j < components.size(); ++j)
+                            suffix_path /= components[j];
+                        if (match_glob(suffix_path.string(), pattern))
+                            return true;
+                    }
+                    return false;
+                };
+
+            for (const auto &pattern : rules.suffix_globs) {
+                if (match_suffixes_internal(abs, pattern))
+                    return true;
+            }
         }
 
         return false;
