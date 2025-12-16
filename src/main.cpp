@@ -59,6 +59,7 @@ int main(int argc, char *argv[]) {
     auto file_paths = file_finder.find_files(
         parser.inputs(),
         config.recursive,
+        config.process_hidden,
         config.extensions,
         config.exclude_paths);
 

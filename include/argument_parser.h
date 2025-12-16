@@ -53,20 +53,20 @@ namespace punp {
             PUNP_ADD_ARG_HANDLER("-t", "--threads", threads_handler),
             PUNP_ADD_ARG_HANDLER("-e", "--extension", extension_handler),
             PUNP_ADD_ARG_HANDLER("-E", "--exclude", exclude_handler),
-
-            // add more handlers here
+            PUNP_ADD_ARG_HANDLER("-H", "--hidden", hidden_handler),
         };
 #undef PUNP_ADD_ARG_HANDLER
 
         /*****  Handler methods *****/
-        int version_handler(const char *next_arg);
-        int help_handler(const char *next_arg);
-        int update_handler(const char *next_arg);
-        int recursive_handler(const char *next_arg);
-        int verbose_handler(const char *next_arg);
-        int threads_handler(const char *next_arg);
-        int extension_handler(const char *next_arg);
-        int exclude_handler(const char *next_arg);
+        int version_handler(const char *);
+        int help_handler(const char *);
+        int update_handler(const char *);
+        int recursive_handler(const char *);
+        int verbose_handler(const char *);
+        int threads_handler(const char *);
+        int extension_handler(const char *);
+        int exclude_handler(const char *);
+        int hidden_handler(const char *);
         /*****  Handler methods *****/
     };
 

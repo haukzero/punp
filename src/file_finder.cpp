@@ -1,19 +1,22 @@
 #include "file_finder.h"
 #include "color_print.h"
 #include "common.h"
+#include "default_excludes.h"
 #include <algorithm>
 #include <filesystem>
+#include <unordered_set>
 
 namespace punp {
 
     std::vector<std::string> FileFinder::find_files(
         const std::vector<std::string> &patterns,
         bool recursive,
+        bool process_hidden,
         const std::vector<std::string> &extensions,
         const std::vector<std::string> &exclude_paths) const {
 
         std::vector<std::string> all_files;
-        ExcludeRules rules = parse_excludes(exclude_paths);
+        ExcludeRules rules = parse_excludes(process_hidden, exclude_paths);
         std::unordered_set<std::string> ext_set(extensions.begin(), extensions.end());
 
         auto expand_one_pattern =
@@ -271,9 +274,14 @@ namespace punp {
         return filtered;
     }
 
-    FileFinder::ExcludeRules FileFinder::parse_excludes(const std::vector<std::string> &excludes) const {
+    FileFinder::ExcludeRules FileFinder::parse_excludes(const bool process_hidden, const std::vector<std::string> &excludes) const {
         ExcludeRules rules;
+        rules.ignore_hidden = !process_hidden;
         namespace fs = std::filesystem;
+
+        if (!process_hidden) {
+            generate_default_excludes(rules.names, rules.extensions);
+        }
 
         for (const auto &ex_in : excludes) {
             std::string ex = strip_trailing_slashes(ex_in);
@@ -320,12 +328,25 @@ namespace punp {
         namespace fs = std::filesystem;
         std::string filename = path.filename().string();
 
-        // 1. Fast check: Exact Name Match
+        // 1. Check hidden files
+        if (rules.ignore_hidden && !filename.empty() && filename[0] == '.') {
+            return true;
+        }
+
+        // 2. Fast check: Exact Name Match
         if (rules.names.count(filename)) {
             return true;
         }
 
-        // 2. Fast check: Name Glob
+        // 3. Fast check: Extension Match
+        if (!rules.extensions.empty()) {
+            std::string ext = path.extension().string();
+            if (rules.extensions.count(ext)) {
+                return true;
+            }
+        }
+
+        // 4. Fast check: Name Glob
         for (const auto &pattern : rules.name_globs) {
             if (match_glob(filename, pattern))
                 return true;
@@ -335,6 +356,9 @@ namespace punp {
         if (check_components) {
             for (const auto &comp : path) {
                 std::string comp_str = comp.string();
+                if (rules.ignore_hidden && !comp_str.empty() && comp_str[0] == '.') {
+                    return true;
+                }
                 if (rules.names.count(comp_str)) {
                     return true;
                 }
@@ -345,7 +369,7 @@ namespace punp {
             }
         }
 
-        // 3. Path checks (Expensive)
+        // 4. Path checks (Expensive)
         if (rules.abs_paths.empty() && rules.abs_path_globs.empty() && rules.suffix_globs.empty())
             return false;
 
@@ -413,6 +437,13 @@ namespace punp {
         }
 
         return false;
+    }
+
+    void FileFinder::generate_default_excludes(std::unordered_set<std::string> &names, std::unordered_set<std::string> &extensions) const {
+        names.insert(default_excludes::default_fullname_excludes.begin(),
+                     default_excludes::default_fullname_excludes.end());
+        extensions.insert(default_excludes::default_extension_excludes.begin(),
+                          default_excludes::default_extension_excludes.end());
     }
 
 } // namespace punp

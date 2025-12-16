@@ -81,6 +81,7 @@ namespace punp {
             {"-t, --threads <n>", "Set maximum thread count (default: auto)"},
             {"-e, --extension <ext>", "Only process files with specified extension"},
             {"-E, --exclude <path>", "Exclude specified file/dir or wildcard pattern from processing"},
+            {"-H, --hidden", "Process hidden files and directories"},
         };
         print_aligned_kv_pairs(options);
 
@@ -202,6 +203,11 @@ namespace punp {
             error("--exclude requires a file or directory path");
             return 1;
         }
+    }
+
+    int ArgumentParser::hidden_handler(const char *) {
+        _config.process_hidden = true;
+        return 1;
     }
 
 } // namespace punp

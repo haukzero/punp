@@ -14,16 +14,19 @@ namespace punp {
         std::vector<std::string> find_files(
             const std::vector<std::string> &patterns,
             bool recursive = false,
+            bool process_hidden = false,
             const std::vector<std::string> &extensions = {},
             const std::vector<std::string> &exclude_paths = {}) const;
 
     private:
         struct ExcludeRules {
             std::unordered_set<std::string> names;
+            std::unordered_set<std::string> extensions;
             std::vector<std::string> name_globs;
             std::unordered_set<std::string> abs_paths;
             std::vector<std::string> abs_path_globs;
             std::vector<std::string> suffix_globs;
+            bool ignore_hidden = false;
         };
 
         bool is_dir(const std::string &path) const;
@@ -34,7 +37,9 @@ namespace punp {
 
         std::string strip_trailing_slashes(std::string s) const;
         std::vector<std::string> expand_glob(const std::string &pattern) const;
-        ExcludeRules parse_excludes(const std::vector<std::string> &excludes) const;
+        ExcludeRules parse_excludes(
+            const bool process_hidden = false,
+            const std::vector<std::string> &excludes = {}) const;
         bool is_excluded(
             const std::filesystem::path &path,
             const ExcludeRules &rules,
@@ -47,6 +52,8 @@ namespace punp {
             bool recursive,
             const std::unordered_set<std::string> &extensions,
             const ExcludeRules &rules) const;
+
+        void generate_default_excludes(std::unordered_set<std::string> &names, std::unordered_set<std::string> &extensions) const;
     };
 
 } // namespace punp
