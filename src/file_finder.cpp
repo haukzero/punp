@@ -14,16 +14,17 @@ namespace punp {
 
         std::vector<std::string> all_files;
         ExcludeRules rules = parse_excludes(exclude_paths);
+        std::unordered_set<std::string> ext_set(extensions.begin(), extensions.end());
 
         auto expand_one_pattern =
-            [this, recursive, &extensions, &rules](const std::string &pattern) {
+            [this, recursive, &ext_set, &rules](const std::string &pattern) {
                 std::vector<std::string> matched_files;
                 if (is_dir(pattern)) {
-                    matched_files = find_files_in_dir(pattern, recursive, extensions, rules);
+                    matched_files = find_files_in_dir(pattern, recursive, ext_set, rules);
                 } else if (contains_wildcard(pattern)) {
                     matched_files = expand_glob(pattern);
-                    if (!extensions.empty()) {
-                        matched_files = filter_by_extension(matched_files, extensions);
+                    if (!ext_set.empty()) {
+                        matched_files = filter_by_extension(matched_files, ext_set);
                     }
                     // Filter by excludes
                     matched_files.erase(
@@ -33,7 +34,7 @@ namespace punp {
                                        }),
                         matched_files.end());
                 } else if (is_file(pattern)) {
-                    if (extensions.empty() || has_extension(pattern, extensions)) {
+                    if (ext_set.empty() || has_extension(pattern, ext_set)) {
                         if (!is_excluded(std::filesystem::path(pattern), rules, true)) {
                             matched_files.emplace_back(pattern);
                         }
@@ -70,7 +71,7 @@ namespace punp {
     std::vector<std::string> FileFinder::find_files_in_dir(
         const std::string &dir,
         bool recursive,
-        const std::vector<std::string> &extensions,
+        const std::unordered_set<std::string> &extensions,
         const ExcludeRules &rules) const {
 
         std::vector<std::string> files;
@@ -237,7 +238,7 @@ namespace punp {
         return pattern_pos >= pattern.length() && filename_pos >= filename.length();
     }
 
-    bool FileFinder::has_extension(const std::string &path, const std::vector<std::string> &extensions) const {
+    bool FileFinder::has_extension(const std::string &path, const std::unordered_set<std::string> &extensions) const {
         try {
             std::filesystem::path file_path(path);
             std::string ext = file_path.extension().string();
@@ -248,12 +249,7 @@ namespace punp {
             }
 
             // Check if this extension is in the list
-            for (const auto &target_ext : extensions) {
-                if (ext == target_ext) {
-                    return true;
-                }
-            }
-            return false;
+            return extensions.count(ext) > 0;
         } catch (const std::exception &) {
             return false;
         }
@@ -261,7 +257,7 @@ namespace punp {
 
     std::vector<std::string> FileFinder::filter_by_extension(
         const std::vector<std::string> &files,
-        const std::vector<std::string> &extensions) const {
+        const std::unordered_set<std::string> &extensions) const {
 
         std::vector<std::string> filtered;
         filtered.reserve(files.size());
@@ -307,13 +303,13 @@ namespace punp {
                     try {
                         fs::path ex_path(ex);
                         auto ex_abs = fs::absolute(ex_path).lexically_normal();
-                        rules.abs_paths.push_back(ex_abs.string());
+                        rules.abs_paths.insert(ex_abs.string());
                     } catch (...) {
                         // Ignore invalid paths
                     }
                 } else {
                     // Name
-                    rules.names.push_back(ex);
+                    rules.names.insert(ex);
                 }
             }
         }
@@ -325,9 +321,8 @@ namespace punp {
         std::string filename = path.filename().string();
 
         // 1. Fast check: Exact Name Match
-        for (const auto &name : rules.names) {
-            if (filename == name)
-                return true;
+        if (rules.names.count(filename)) {
+            return true;
         }
 
         // 2. Fast check: Name Glob
@@ -340,9 +335,8 @@ namespace punp {
         if (check_components) {
             for (const auto &comp : path) {
                 std::string comp_str = comp.string();
-                for (const auto &name : rules.names) {
-                    if (comp_str == name)
-                        return true;
+                if (rules.names.count(comp_str)) {
+                    return true;
                 }
                 for (const auto &pattern : rules.name_globs) {
                     if (match_glob(comp_str, pattern))
@@ -372,19 +366,15 @@ namespace punp {
 
         if (!rules.abs_paths.empty()) {
             const auto &abs = get_abs_path();
-            std::string abs_str = abs.string();
-            for (const auto &rule_abs : rules.abs_paths) {
-                if (abs_str == rule_abs)
-                    return true;
-
-                // Check directory prefix
-                // rule_abs is guaranteed to not have trailing slash by parse_excludes (strip_trailing_slashes)
-                // But we need to ensure we match directory boundary
-                if (abs_str.size() > rule_abs.size() &&
-                    abs_str.compare(0, rule_abs.size(), rule_abs) == 0 &&
-                    (abs_str[rule_abs.size()] == fs::path::preferred_separator || abs_str[rule_abs.size()] == '/')) {
+            fs::path current = abs;
+            while (!current.empty()) {
+                if (rules.abs_paths.count(current.string())) {
                     return true;
                 }
+                if (!current.has_parent_path() || current == current.parent_path()) {
+                    break;
+                }
+                current = current.parent_path();
             }
         }
 

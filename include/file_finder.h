@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace punp {
@@ -18,9 +19,9 @@ namespace punp {
 
     private:
         struct ExcludeRules {
-            std::vector<std::string> names;
+            std::unordered_set<std::string> names;
             std::vector<std::string> name_globs;
-            std::vector<std::string> abs_paths;
+            std::unordered_set<std::string> abs_paths;
             std::vector<std::string> abs_path_globs;
             std::vector<std::string> suffix_globs;
         };
@@ -29,7 +30,7 @@ namespace punp {
         bool is_file(const std::string &path) const;
         bool contains_wildcard(const std::string &s) const;
         bool match_glob(const std::string &filename, const std::string &pattern) const;
-        bool has_extension(const std::string &path, const std::vector<std::string> &extensions) const;
+        bool has_extension(const std::string &path, const std::unordered_set<std::string> &extensions) const;
 
         std::string strip_trailing_slashes(std::string s) const;
         std::vector<std::string> expand_glob(const std::string &pattern) const;
@@ -40,11 +41,11 @@ namespace punp {
             bool check_components = false) const;
         std::vector<std::string> filter_by_extension(
             const std::vector<std::string> &files,
-            const std::vector<std::string> &extensions) const;
+            const std::unordered_set<std::string> &extensions) const;
         std::vector<std::string> find_files_in_dir(
             const std::string &dir,
             bool recursive,
-            const std::vector<std::string> &extensions,
+            const std::unordered_set<std::string> &extensions,
             const ExcludeRules &rules) const;
     };
 
