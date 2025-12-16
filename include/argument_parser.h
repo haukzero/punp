@@ -54,6 +54,7 @@ namespace punp {
             PUNP_ADD_ARG_HANDLER("-e", "--extension", extension_handler),
             PUNP_ADD_ARG_HANDLER("-E", "--exclude", exclude_handler),
             PUNP_ADD_ARG_HANDLER("-H", "--hidden", hidden_handler),
+            PUNP_ADD_ARG_HANDLER("-n", "--dry-run", dry_run_handler),
         };
 #undef PUNP_ADD_ARG_HANDLER
 
@@ -67,6 +68,7 @@ namespace punp {
         int extension_handler(const char *);
         int exclude_handler(const char *);
         int hidden_handler(const char *);
+        int dry_run_handler(const char *);
         /*****  Handler methods *****/
     };
 

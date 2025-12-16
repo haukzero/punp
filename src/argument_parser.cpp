@@ -82,6 +82,7 @@ namespace punp {
             {"-e, --extension <ext>", "Only process files with specified extension"},
             {"-E, --exclude <path>", "Exclude specified file/dir or wildcard pattern from processing"},
             {"-H, --hidden", "Process hidden files and directories"},
+            {"-n, --dry-run", "Perform a trial run with no changes made"},
         };
         print_aligned_kv_pairs(options);
 
@@ -210,4 +211,8 @@ namespace punp {
         return 1;
     }
 
+    int ArgumentParser::dry_run_handler(const char *) {
+        _config.dry_run = true;
+        return 1;
+    }
 } // namespace punp

@@ -68,8 +68,16 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    if (config.verbose) {
+    if (config.verbose || config.dry_run) {
         println_blue("Found ", file_paths.size(), " files to process");
+    }
+
+    if (config.dry_run) {
+        println_yellow("These files will be processed (dry run, no changes will be made):");
+        for (const auto &file : file_paths) {
+            println("  ", file);
+        }
+        return 0;
     }
 
     // Process files

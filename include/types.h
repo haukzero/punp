@@ -45,6 +45,7 @@ namespace punp {
     struct ProcessingConfig {
         bool recursive = false;
         bool verbose = false;
+        bool dry_run = false;
         bool process_hidden = false;
         size_t max_threads = 0;                 // 0 means auto-detect
         std::vector<std::string> extensions;    // File extensions to filter
