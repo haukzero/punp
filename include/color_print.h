@@ -4,44 +4,81 @@
 #include <string_view>
 #include <utility>
 
+#ifdef _WIN32
+#include <io.h>
+#define ISATTY _isatty
+#define FILENO _fileno
+#else
+#include <unistd.h>
+#define ISATTY isatty
+#define FILENO fileno
+#endif
+
 namespace punp {
 
     namespace Colors {
         inline constexpr std::string_view RESET = "\033[0m";
-        inline constexpr std::string_view RED = "\033[31m";
-        inline constexpr std::string_view GREEN = "\033[32m";
+        inline constexpr std::string_view RED = "\033[91m";
+        inline constexpr std::string_view GREEN = "\033[92m";
         inline constexpr std::string_view YELLOW = "\033[33m";
-        inline constexpr std::string_view BLUE = "\033[34m";
+        inline constexpr std::string_view BLUE = "\033[94m";
         inline constexpr std::string_view MAGENTA = "\033[35m";
         inline constexpr std::string_view CYAN = "\033[36m";
     }
 
+    inline bool is_terminal(std::ostream &os) {
+        if (&os == &std::cout) {
+            return ISATTY(FILENO(stdout));
+        } else if (&os == &std::cerr) {
+            return ISATTY(FILENO(stderr));
+        }
+        return false;
+    }
+
     template <typename... Args>
     inline void colored_print(std::string_view color_code, Args &&...args) {
-        std::cout << color_code;
+        if (is_terminal(std::cout)) {
+            std::cout << color_code;
+        }
         (std::cout << ... << std::forward<Args>(args));
-        std::cout << Colors::RESET;
+        if (is_terminal(std::cout)) {
+            std::cout << Colors::RESET;
+        }
     }
 
     template <typename... Args>
     inline void colored_println(std::string_view color_code, Args &&...args) {
-        std::cout << color_code;
+        if (is_terminal(std::cout)) {
+            std::cout << color_code;
+        }
         (std::cout << ... << std::forward<Args>(args));
-        std::cout << Colors::RESET << '\n';
+        if (is_terminal(std::cout)) {
+            std::cout << Colors::RESET;
+        }
+        std::cout << '\n';
     }
 
     template <typename... Args>
     inline void colored_print_err(std::string_view color_code, Args &&...args) {
-        std::cerr << color_code;
+        if (is_terminal(std::cerr)) {
+            std::cerr << color_code;
+        }
         (std::cerr << ... << std::forward<Args>(args));
-        std::cerr << Colors::RESET;
+        if (is_terminal(std::cerr)) {
+            std::cerr << Colors::RESET;
+        }
     }
 
     template <typename... Args>
     inline void colored_println_err(std::string_view color_code, Args &&...args) {
-        std::cerr << color_code;
+        if (is_terminal(std::cerr)) {
+            std::cerr << color_code;
+        }
         (std::cerr << ... << std::forward<Args>(args));
-        std::cerr << Colors::RESET << '\n';
+        if (is_terminal(std::cerr)) {
+            std::cerr << Colors::RESET;
+        }
+        std::cerr << '\n';
     }
 
 #define PUNP_DEFINE_COLOR_PRINT(FUNC_NAME, COLOR_CONST)          \
