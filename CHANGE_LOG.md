@@ -7,6 +7,7 @@
     - 使用现代 CMake 更推荐的方式重构 `CMakeLists.txt` 并默认使用 `Release` 作为构建类型
     - 将版本定义转移到 `CMakeLists.txt` 中
     - 添加规则 `PROTECT_CONTENT(CONTENT "protected content")` 用于指定保护的文本
+    - 将使用示例从 `--help` 中抽离出来
 - 2025.12.16
     - 默认排除系统隐藏文件, 常见大文件/目录, 二进制文件, 常见非核心文件等无关内容以在一般情况下提升性能. 可通过 `-H` option 打开处理隐藏文件
 - 2025.12.12

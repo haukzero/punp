@@ -17,8 +17,9 @@ namespace punp {
 
         return !_inputs.empty() ||
                !_config.extensions.empty() ||
-               _show_help ||
                _show_version ||
+               _show_help ||
+               _show_example ||
                _update;
     }
 
@@ -43,7 +44,7 @@ namespace punp {
         println("v", punp::version);
     }
 
-    void ArgumentParser::display_help(const std::string &programName) {
+    void ArgumentParser::display_help(const std::string &name) {
 
         using kv_pair_t = std::pair<std::string, std::string>;
         using kv_vector_t = std::vector<kv_pair_t>;
@@ -70,7 +71,7 @@ namespace punp {
             }
         };
 
-        println_green("Usage: ", programName, " [OPTIONS] <files...>");
+        println_green("Usage: ", name, " [OPTIONS] <files...>");
         println_cyan("High-performance punctuation replacement tool");
 
         println_green("Options:");
@@ -85,33 +86,44 @@ namespace punp {
             {"-E, --exclude <path>", "Exclude specified file/dir or wildcard pattern from processing"},
             {"-H, --hidden", "Process hidden files and directories"},
             {"-n, --dry-run", "Perform a trial run with no changes made"},
+            {"--show-example", "Show usage examples"},
         };
         print_aligned_kv_pairs(options);
-
-        println_green("Examples:");
-        kv_vector_t examples = {
-            {programName + " file.txt",
-             "Process single file"},
-            {programName + " *.txt",
-             "Process all .txt files"},
-            {programName + " -r ./docs",
-             "Process all files in docs/ recursively"},
-            {programName + " -v -t 4 *.md",
-             "Process .md files with 4 threads, verbose"},
-            {programName + " -r ./ -e md -e txt",
-             "Process all .md and .txt files in current directory recursively"},
-            {programName + " -r ./ -E ./docs",
-             "Process all files in current directory recursively, excluding docs/"},
-            {programName + " -r ./ -E 'build/,.cache/,.git*'",
-             "Process recursively but exclude build/, .cache/ and paths matching .git*"},
-        };
-        print_aligned_kv_pairs(examples);
 
         println_green("Configuration:");
         println_cyan("  The tool looks for '", RuleFile::NAME, "' in:");
         println_cyan("    1. Current directory (higher priority)");
         println_cyan("    2. ", StoreDir::CONFIG_DIR, " (lower priority)");
         println_cyan("  Rules in higher priority locations override those in lower priority locations.");
+
+        println("-------------------------------------");
+        println_green("To see more examples, run:");
+        println_cyan("  ", name, " --show-example");
+    }
+
+    void ArgumentParser::display_example(const std::string &name) {
+        println_green("Examples:");
+        auto print_example = [&name](const std::string &desc, const std::string &cmd_args) {
+            println_cyan("  # ", desc);
+            println_yellow("  ", name, " ", cmd_args);
+            println("");
+        };
+        print_example("Process a single file",
+                      " file.txt");
+        print_example("Process all .txt files in current directory",
+                      " *.txt");
+        print_example("Process all files in 'docs/' directory recursively",
+                      " -r ./docs");
+        print_example("Process .md files with 4 threads and verbose output",
+                      " -v -t 4 *.md");
+        print_example("Process all .md and .txt files in current directory recursively",
+                      " -r ./ -e md -e txt");
+        print_example("Process all files in current directory recursively, excluding 'docs/'",
+                      " -r ./ -E ./docs");
+        print_example("Process recursively but exclude 'build/', '.cache/' and paths matching '.git*'",
+                      " -r ./ -E 'build/,.cache/,.git*'");
+        print_example("Process all files in current directory with hidden files and directories",
+                      "-H ./");
     }
 
     std::vector<std::string> ArgumentParser::split_with_commas(const std::string &s) const {
@@ -215,6 +227,11 @@ namespace punp {
 
     int ArgumentParser::dry_run_handler(const char *) {
         _config.dry_run = true;
+        return 1;
+    }
+
+    int ArgumentParser::show_example_handler(const char *) {
+        _show_example = true;
         return 1;
     }
 } // namespace punp

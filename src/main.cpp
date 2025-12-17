@@ -30,6 +30,11 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    if (parser.show_example()) {
+        ArgumentParser::display_example(argv[0]);
+        return 0;
+    }
+
     if (parser.update()) {
         Updater updater;
         updater.maybe_update();

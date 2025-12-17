@@ -18,11 +18,13 @@ namespace punp {
         const ProcessingConfig &config() const noexcept { return _config; }
         bool show_version() const noexcept { return _show_version; }
         bool show_help() const noexcept { return _show_help; }
+        bool show_example() const noexcept { return _show_example; }
         bool update() const noexcept { return _update; }
 
         bool parse(int argc, char *argv[]);
         static void display_version();
         static void display_help(const std::string &name);
+        static void display_example(const std::string &name);
 
     private:
         int process_args(const std::string &arg, const char *next_arg);
@@ -34,6 +36,7 @@ namespace punp {
         ProcessingConfig _config;
         bool _show_version = false;
         bool _show_help = false;
+        bool _show_example = false;
         bool _update = false;
 
     private:
@@ -56,6 +59,7 @@ namespace punp {
             PUNP_ADD_ARG_HANDLER("-E", "--exclude", exclude_handler),
             PUNP_ADD_ARG_HANDLER("-H", "--hidden", hidden_handler),
             PUNP_ADD_ARG_HANDLER("-n", "--dry-run", dry_run_handler),
+            PUNP_ADD_ARG_HANDLER("--show-example", "--show-example", show_example_handler), // no short name
         };
 #undef PUNP_ADD_ARG_HANDLER
 
@@ -70,6 +74,7 @@ namespace punp {
         int exclude_handler(const char *);
         int hidden_handler(const char *);
         int dry_run_handler(const char *);
+        int show_example_handler(const char *);
         /*****  Handler methods *****/
     };
 
