@@ -1,8 +1,9 @@
 #pragma once
 
-#include "config_parser/lexer.h"
-#include "config_parser/token.h"
-#include "types.h"
+#include "base/types.h"
+#include "config/parser/lexer.h"
+#include "config/parser/token.h"
+
 #include <memory>
 #include <string>
 #include <unordered_map>

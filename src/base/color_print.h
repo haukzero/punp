@@ -1,9 +1,5 @@
 #pragma once
 
-#include <iostream>
-#include <string_view>
-#include <utility>
-
 #ifdef _WIN32
 #include <io.h>
 #define ISATTY _isatty
@@ -13,6 +9,10 @@
 #define ISATTY isatty
 #define FILENO fileno
 #endif
+
+#include <iostream>
+#include <string_view>
+#include <utility>
 
 namespace punp {
 

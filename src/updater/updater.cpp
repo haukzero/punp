@@ -1,6 +1,8 @@
-#include "updater.h"
-#include "color_print.h"
-#include "common.h"
+#include "updater/updater.h"
+
+#include "base/color_print.h"
+#include "base/common.h"
+
 #include <filesystem>
 #include <fstream>
 
@@ -148,7 +150,7 @@ namespace punp {
         }
 
         auto build_path = clone_path / "build";
-        std::string cmake_conf_cmd = "cmake -S " + clone_path.string() + " -B " + build_path.string() + " -DCMAKE_BUILD_TYPE=MinSizeRel";
+        std::string cmake_conf_cmd = "cmake -S " + clone_path.string() + " -B " + build_path.string() + " -DCMAKE_BUILD_TYPE=Release";
         if (std::system(cmake_conf_cmd.c_str()) != 0) {
             error("CMake configuration failed.");
             return;

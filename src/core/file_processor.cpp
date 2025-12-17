@@ -1,13 +1,16 @@
-#include "file_processor.h"
-#include "color_print.h"
-#include "common.h"
-#include "config_manager.h"
-#include "thread_pool.h"
-#include "types.h"
+#include "core/file_processor.h"
+
+#include "base/color_print.h"
+#include "base/common.h"
+#include "base/thread_pool/thread_pool.h"
+#include "base/types.h"
+#include "config/config_manager.h"
+
+#include <sys/stat.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <fstream>
-#include <sys/stat.h>
 
 namespace punp {
 

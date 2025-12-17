@@ -1,5 +1,6 @@
-#include "config_parser/lexer.h"
-#include "config_parser/token.h"
+#include "config/parser/lexer.h"
+#include "config/parser/token.h"
+
 #include <cctype>
 
 namespace punp {

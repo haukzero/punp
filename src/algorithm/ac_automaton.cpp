@@ -1,5 +1,7 @@
-#include "ac_automaton.h"
-#include "types.h"
+#include "algorithm/ac_automaton.h"
+
+#include "base/types.h"
+
 #include <algorithm>
 #include <cstddef>
 #include <queue>

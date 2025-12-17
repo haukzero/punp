@@ -1,6 +1,7 @@
-#include "argument_parser.h"
-#include "color_print.h"
-#include "common.h"
+#include "config/argument_parser.h"
+
+#include "base/color_print.h"
+#include "base/common.h"
 
 namespace punp {
 

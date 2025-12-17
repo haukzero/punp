@@ -1,8 +1,9 @@
 #pragma once
 
-#include "ac_automaton.h"
-#include "thread_pool.h"
-#include "types.h"
+#include "algorithm/ac_automaton.h"
+#include "base/thread_pool/thread_pool.h"
+#include "base/types.h"
+
 #include <atomic>
 #include <condition_variable>
 #include <queue>

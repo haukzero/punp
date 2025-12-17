@@ -1,9 +1,10 @@
-#include "argument_parser.h"
-#include "color_print.h"
-#include "config_manager.h"
-#include "file_finder.h"
-#include "file_processor.h"
-#include "updater.h"
+#include "base/color_print.h"
+#include "config/argument_parser.h"
+#include "config/config_manager.h"
+#include "core/file_finder.h"
+#include "core/file_processor.h"
+#include "updater/updater.h"
+
 #include <chrono>
 
 using namespace punp;

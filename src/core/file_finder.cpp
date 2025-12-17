@@ -1,7 +1,9 @@
-#include "file_finder.h"
-#include "color_print.h"
-#include "common.h"
-#include "default_excludes.h"
+#include "core/file_finder.h"
+
+#include "base/color_print.h"
+#include "base/common.h"
+#include "config/default_excludes.h"
+
 #include <algorithm>
 #include <filesystem>
 #include <unordered_set>

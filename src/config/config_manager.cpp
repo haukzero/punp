@@ -1,7 +1,9 @@
-#include "config_manager.h"
-#include "color_print.h"
-#include "common.h"
-#include "config_parser/parser.h"
+#include "config/config_manager.h"
+
+#include "base/color_print.h"
+#include "base/common.h"
+#include "config/parser/parser.h"
+
 #include <cstdlib>
 #include <fstream>
 #include <vector>

@@ -1,7 +1,9 @@
-#include "config_parser/parser.h"
-#include "color_print.h"
-#include "config_parser/token.h"
-#include "types.h"
+#include "config/parser/parser.h"
+
+#include "base/color_print.h"
+#include "base/types.h"
+#include "config/parser/token.h"
+
 #include <algorithm>
 #include <string>
 #include <unordered_map>
