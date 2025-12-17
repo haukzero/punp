@@ -16,10 +16,14 @@
         - 对于有多个 `ARG_KEY` 的函数, 顺序可以任意, 如 `REPLACE()` 可以先写 `TO` 再写 `FROM`
         - 函数可换行写
         - **如果被 `""` 包起来的字符串中需要含有 `"` 需要加转义字符 `\`**
-    - 添加替换规则: `REPLACE(FROM "from str", TO "to str");`
-    - 删除替换规则: `DEL(FROM "replace str");`
-    - 清除当前已导入的替换规则: `CLEAR();`
-    - 添加保护区域规则: `PROTECT(START_MARKER "start marker", END_MARKER "end_marker");`
+    - 替换相关:
+        - 添加替换规则: `REPLACE(FROM "from str", TO "to str");`
+        - 删除替换规则: `DEL(FROM "replace str");`
+        - 清除当前已导入的替换规则: `CLEAR();`
+    - 保护文本不被替换相关:
+        - 添加保护区域规则: `PROTECT(START_MARKER "start marker", END_MARKER "end_marker");`
+        - 添加指定保护内容规则: `PROTECT_CONTENT(CONTENT "protected content");`
+            - 等价于 `PROTECT(START_MARKER "protected content", END_MARKER "");`
 - 除了上面指定的规则外, 其他语句均不能正确识别
 - 对于Linux, 先在`~/.local/share/punp/`中查找规则文件`.prules`, 然后再在当前目录中找
 

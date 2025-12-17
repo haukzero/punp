@@ -40,8 +40,9 @@ namespace punp {
 
             bool parse_replace();
             bool parse_del();
-            bool parse_protect();
             bool parse_clear();
+            bool parse_protect();
+            bool parse_protect_content();
             /*****  Parsing methods *****/
 
             // Map: KEYWORD -> parse_function
@@ -50,8 +51,9 @@ namespace punp {
             const parse_func_map_t _parse_func_map = {
                 {"REPLACE", &Parser::parse_replace},
                 {"DEL", &Parser::parse_del},
-                {"PROTECT", &Parser::parse_protect},
                 {"CLEAR", &Parser::parse_clear},
+                {"PROTECT", &Parser::parse_protect},
+                {"PROTECT_CONTENT", &Parser::parse_protect_content},
             };
 
             void advance();

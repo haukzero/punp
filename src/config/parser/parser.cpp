@@ -111,6 +111,33 @@ namespace punp {
             }
         }
 
+        /// Parse keyword arguments from the token stream
+        ///
+        /// Parses a comma-separated list of key-value pairs in the format:
+        /// KEY "value", KEY "value", ...
+        ///
+        /// The function expects the current token to be at the first argument
+        /// (after the opening parenthesis) and stops when it encounters a
+        /// closing parenthesis ')' or EOF.
+        ///
+        /// @param kwargs_keys A vector of allowed/expected argument keys (case-insensitive).
+        ///                    Keys not in this list will trigger an error but won't stop parsing.
+        /// @param is_valid [out] Set to false if any parsing error occurs, true otherwise.
+        ///                 The caller should check this flag to determine if parsing succeeded.
+        ///
+        /// @return A map of parsed key-value pairs (keys are converted to uppercase).
+        ///         Returns an empty or partial map if is_valid is set to false.
+        ///
+        /// @note
+        /// - All keys are automatically converted to uppercase for case-insensitive matching
+        /// - Duplicate keys are ignored with a warning, only the first occurrence is kept
+        /// - Trailing commas are not allowed and will trigger an error
+        /// - Unknown keys (not in kwargs_keys) trigger an error but don't stop parsing
+        /// - The function advances tokens internally; on success, current token will be at ')'
+        ///
+        /// @example
+        /// // For input: FROM "source", TO "target"
+        /// // Returns: {"FROM": "source", "TO": "target"}
         Parser::kwargs_t Parser::parse_args(const kwargs_keys_t &kwargs_keys, bool &is_valid) {
             Parser::kwargs_t kwargs;
             kwargs.reserve(kwargs_keys.size());
@@ -242,6 +269,47 @@ namespace punp {
 namespace punp {
     namespace config_parser {
 
+#define PUNP_CHECK_REQUIRED_ARGS(kwargs, keys, cmd_name, line)                                      \
+    do {                                                                                            \
+        for (const auto &key : keys) {                                                              \
+            if (kwargs.find(key) == kwargs.end()) {                                                 \
+                error("Missing argument '", key, "' in ", cmd_name, " at ", _file_path, ':', line); \
+                return false;                                                                       \
+            }                                                                                       \
+        }                                                                                           \
+    } while (0)
+
+#define PUNP_EXPECT_RPAREN(cmd_name)                                                 \
+    do {                                                                             \
+        if (!expect(TokenType::TOKEN_RPAREN)) {                                      \
+            error("Expected ')' after ", cmd_name, " arguments at ",                 \
+                  _file_path, ':', _current_token.line, ':', _current_token.column); \
+            return false;                                                            \
+        }                                                                            \
+    } while (0)
+
+#define PUNP_EXPECT_SEMICOLON(cmd_name)                                              \
+    do {                                                                             \
+        if (!expect(TokenType::TOKEN_SEMICOLON)) {                                   \
+            error("Expected ';' after ", cmd_name, " statement at ",                 \
+                  _file_path, ':', _current_token.line, ':', _current_token.column); \
+            return false;                                                            \
+        }                                                                            \
+    } while (0)
+
+#define PUNP_FINALIZE_PARSE(kwargs, keys, cmd_name, line)       \
+    do {                                                        \
+        PUNP_CHECK_REQUIRED_ARGS(kwargs, keys, cmd_name, line); \
+        PUNP_EXPECT_RPAREN(cmd_name);                           \
+        PUNP_EXPECT_SEMICOLON(cmd_name);                        \
+    } while (0)
+
+#define PUNP_FINALIZE_PARSE_NO_CHECK(cmd_name) \
+    do {                                       \
+        PUNP_EXPECT_RPAREN(cmd_name);          \
+        PUNP_EXPECT_SEMICOLON(cmd_name);       \
+    } while (0)
+
         // Replace format: REPLACE(FROM "...", TO "...");
         bool Parser::parse_replace() {
             size_t current_line = _current_token.line;
@@ -252,28 +320,7 @@ namespace punp {
             if (!is_valid)
                 return false;
 
-            for (const auto &key : kwargs_keys) {
-                if (kwargs.find(key) == kwargs.end()) {
-                    error("Missing argument '", key, "' in REPLACE at ", _file_path, ':', current_line);
-                    return false;
-                }
-            }
-
-            if (!expect(TokenType::TOKEN_RPAREN)) {
-                error("Expected ')' after REPLACE arguments at ",
-                      _file_path,
-                      ':', _current_token.line,
-                      ':', _current_token.column);
-                return false;
-            }
-
-            if (!expect(TokenType::TOKEN_SEMICOLON)) {
-                error("Expected ';' after REPLACE statement at ",
-                      _file_path,
-                      ':', _current_token.line,
-                      ':', _current_token.column);
-                return false;
-            }
+            PUNP_FINALIZE_PARSE(kwargs, kwargs_keys, "REPLACE", current_line);
 
             _rep_map_ptr->emplace(to_tstr(kwargs["FROM"]), to_tstr(kwargs["TO"]));
             return true;
@@ -289,26 +336,7 @@ namespace punp {
             if (!is_valid)
                 return false;
 
-            if (kwargs.find("FROM") == kwargs.end()) {
-                error("Missing argument 'FROM' in DEL at ", _file_path, ':', current_line);
-                return false;
-            }
-
-            if (!expect(TokenType::TOKEN_RPAREN)) {
-                error("Expected ')' after DEL arguments at ",
-                      _file_path,
-                      ':', _current_token.line,
-                      ':', _current_token.column);
-                return false;
-            }
-
-            if (!expect(TokenType::TOKEN_SEMICOLON)) {
-                error("Expected ';' after DEL statement at ",
-                      _file_path,
-                      ':', _current_token.line,
-                      ':', _current_token.column);
-                return false;
-            }
+            PUNP_FINALIZE_PARSE(kwargs, kwargs_keys, "DEL", current_line);
 
             if (_rep_map_ptr->erase(to_tstr(kwargs["FROM"])) == 0) {
                 warn("No rule found to erase for '", kwargs["FROM"],
@@ -319,21 +347,7 @@ namespace punp {
 
         // Clear format: CLEAR();
         bool Parser::parse_clear() {
-            if (!expect(TokenType::TOKEN_RPAREN)) {
-                error("Expected ')' after CLEAR at ",
-                      _file_path,
-                      ':', _current_token.line,
-                      ':', _current_token.column);
-                return false;
-            }
-
-            if (!expect(TokenType::TOKEN_SEMICOLON)) {
-                error("Expected ';' after CLEAR statement at ",
-                      _file_path,
-                      ':', _current_token.line,
-                      ':', _current_token.column);
-                return false;
-            }
+            PUNP_FINALIZE_PARSE_NO_CHECK("CLEAR");
 
             _rep_map_ptr->clear();
             return true;
@@ -349,28 +363,7 @@ namespace punp {
             if (!is_valid)
                 return false;
 
-            for (const auto &key : kwargs_keys) {
-                if (kwargs.find(key) == kwargs.end()) {
-                    error("Missing argument '", key, "' in PROTECT at ", _file_path, ':', current_line);
-                    return false;
-                }
-            }
-
-            if (!expect(TokenType::TOKEN_RPAREN)) {
-                error("Expected ')' after PROTECT arguments at ",
-                      _file_path,
-                      ':', _current_token.line,
-                      ':', _current_token.column);
-                return false;
-            }
-
-            if (!expect(TokenType::TOKEN_SEMICOLON)) {
-                error("Expected ';' after PROTECT statement at ",
-                      _file_path,
-                      ':', _current_token.line,
-                      ':', _current_token.column);
-                return false;
-            }
+            PUNP_FINALIZE_PARSE(kwargs, kwargs_keys, "PROTECT", current_line);
 
             _protected_regions_ptr->emplace_back(
                 ProtectedRegion{
@@ -378,6 +371,31 @@ namespace punp {
                     to_tstr(kwargs["END_MARKER"])});
             return true;
         }
+
+        // Protect content format: PROTECT_CONTENT(CONTENT "...");
+        bool Parser::parse_protect_content() {
+            size_t current_line = _current_token.line;
+            auto kwargs_keys = kwargs_keys_t({"CONTENT"});
+            bool is_valid = true;
+            auto kwargs = parse_args(kwargs_keys, is_valid);
+
+            if (!is_valid)
+                return false;
+
+            PUNP_FINALIZE_PARSE(kwargs, kwargs_keys, "PROTECT_CONTENT", current_line);
+
+            _protected_regions_ptr->emplace_back(
+                ProtectedRegion{
+                    to_tstr(kwargs["CONTENT"]),
+                    to_tstr("")});
+            return true;
+        }
+
+#undef PUNP_CHECK_REQUIRED_ARGS
+#undef PUNP_EXPECT_RPAREN
+#undef PUNP_EXPECT_SEMICOLON
+#undef PUNP_FINALIZE_PARSE
+#undef PUNP_FINALIZE_PARSE_NO_CHECK
 
     } // namespace config_parser
 } // namespace punp
