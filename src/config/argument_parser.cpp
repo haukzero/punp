@@ -2,6 +2,7 @@
 
 #include "base/color_print.h"
 #include "base/common.h"
+#include "version.h"
 
 namespace punp {
 
@@ -39,7 +40,7 @@ namespace punp {
     }
 
     void ArgumentParser::display_version() {
-        println("v", Version::VERSION);
+        println("v", punp::version);
     }
 
     void ArgumentParser::display_help(const std::string &programName) {

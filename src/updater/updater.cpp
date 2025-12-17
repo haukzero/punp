@@ -2,9 +2,11 @@
 
 #include "base/color_print.h"
 #include "base/common.h"
+#include "version.h"
 
 #include <filesystem>
 #include <fstream>
+#include <regex>
 
 namespace punp {
     void Updater::maybe_update() {
@@ -43,7 +45,7 @@ namespace punp {
     }
 
     std::string Updater::get_remote_version(const DownloadTool &tool, const std::filesystem::path &tmp_dir) const {
-        auto tmp_file_path = tmp_dir / "punp_version.h";
+        auto tmp_file_path = tmp_dir / "CMakeLists.txt";
         std::string download_cmd;
 
         switch (tool) {
@@ -70,13 +72,12 @@ namespace punp {
         std::string content((std::istreambuf_iterator<char>(version_file)), std::istreambuf_iterator<char>());
         version_file.close();
 
-        std::string version_prefix = "constexpr const char *VERSION = \"";
-        size_t pos = content.find(version_prefix);
-        if (pos != std::string::npos) {
-            pos += version_prefix.length();
-            size_t end_pos = content.find('"', pos);
-            if (end_pos != std::string::npos) {
-                return content.substr(pos, end_pos - pos);
+        std::string regex_str = "project\\s*\\(\\s*" + std::string(punp::name) + "\\s+VERSION\\s+([0-9.]+)";
+        std::regex version_regex(regex_str);
+        std::smatch match;
+        if (std::regex_search(content, match, version_regex)) {
+            if (match.size() > 1) {
+                return match.str(1);
             }
         }
 
@@ -126,7 +127,7 @@ namespace punp {
         if (remote_version_str.empty()) {
             return CheckResult::FAILED;
         }
-        return compare_versions(Version::VERSION, remote_version_str);
+        return compare_versions(punp::version, remote_version_str);
     }
 
     void Updater::update(const std::filesystem::path &tmp_dir) const {

@@ -5,10 +5,6 @@
 
 namespace punp {
 
-    namespace Version {
-        constexpr const char *VERSION = "3.0.5";
-    } // namespace Version
-
     namespace RuleFile {
         constexpr const char *NAME = ".prules";
     } // namespace RuleFile
@@ -30,7 +26,7 @@ namespace punp {
 
     namespace RemoteStore {
         constexpr const char *repo_url = "https://github.com/haukzero/punp.git";
-        constexpr const char *version_file_url = "https://raw.githubusercontent.com/haukzero/punp/refs/heads/master/include/common.h";
+        constexpr const char *version_file_url = "https://raw.githubusercontent.com/haukzero/punp/refs/heads/master/CMakeLists.txt";
     } // namespace RemoteStore
 
 #if defined(__GNUC__) || defined(__clang__)

@@ -1,0 +1,15 @@
+#pragma once
+
+#define PROJECT_NAME "@PROJECT_NAME@"
+#define PROJECT_VERSION "@PROJECT_VERSION@"
+#define PROJECT_VERSION_MAJOR @PROJECT_VERSION_MAJOR@
+#define PROJECT_VERSION_MINOR @PROJECT_VERSION_MINOR@
+#define PROJECT_VERSION_PATCH @PROJECT_VERSION_PATCH@
+
+namespace punp {
+    constexpr const char *version = "@PROJECT_VERSION@";
+    constexpr const char *name = "@PROJECT_NAME@";
+    constexpr int version_major = @PROJECT_VERSION_MAJOR@;
+    constexpr int version_minor = @PROJECT_VERSION_MINOR@;
+    constexpr int version_patch = @PROJECT_VERSION_PATCH@;
+} // namespace punp

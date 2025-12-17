@@ -1,5 +1,5 @@
-cmake_minimum_required(VERSION 3.12)
-project(punp LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20)
+project(punp VERSION 3.0.5 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
@@ -8,6 +8,12 @@ endif()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/version.h.in
+    ${CMAKE_CURRENT_BINARY_DIR}/generated/version.h
+    @ONLY
+)
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
@@ -25,6 +31,7 @@ add_executable(${PROJECT_NAME}
 target_include_directories(${PROJECT_NAME} 
     PRIVATE 
         ${CMAKE_CURRENT_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_BINARY_DIR}/generated
 )
 
 # Compiler options
