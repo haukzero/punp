@@ -14,7 +14,7 @@ namespace punp {
         ArgumentParser() = default;
         ~ArgumentParser() = default;
 
-        const ProcessingConfig &config() const noexcept { return _config; }
+        ProcessingConfig &config() noexcept { return _config; }
         bool show_version() const noexcept { return _show_version; }
         bool show_help() const noexcept { return _show_help; }
         bool show_example() const noexcept { return _show_example; }

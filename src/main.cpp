@@ -82,6 +82,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Process files
+    config.processor_config.file_paths = file_paths;
     FileProcessor processor(config_manager);
     auto results = processor.process_files(config.processor_config);
 
