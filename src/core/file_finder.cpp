@@ -700,8 +700,8 @@ namespace punp {
 
 // NOTE: This namespace block is used to impl latex jumping methods separately.
 namespace punp {
-    std::vector<std::string> FileFinder::extract_latex_includes(const std::string &content) const {
-        std::vector<std::string> includes;
+    std::unordered_set<std::string> FileFinder::extract_latex_includes(const std::string_view &content) const {
+        std::unordered_set<std::string> includes;
         size_t pos = 0;
 
         while (pos < content.size()) {
@@ -734,7 +734,7 @@ namespace punp {
             }
 
             // Extract the filename
-            std::string filename = content.substr(brace_start, brace_end - brace_start);
+            auto filename = content.substr(brace_start, brace_end - brace_start);
 
             // Trim whitespace
             size_t first = filename.find_first_not_of(" \t\n\r");
@@ -744,7 +744,7 @@ namespace punp {
             }
 
             if (!filename.empty()) {
-                includes.emplace_back(filename);
+                includes.insert(std::string(filename));
             }
 
             pos = brace_end + 1;
@@ -780,7 +780,7 @@ namespace punp {
         file.close();
 
         // Extract included files
-        std::vector<std::string> includes = extract_latex_includes(content);
+        auto includes = extract_latex_includes(content);
 
         // Get the directory of the current tex file
         fs::path tex_path(tex_file);

@@ -79,7 +79,7 @@ namespace punp {
             std::unordered_set<std::string> &visited_files,
             std::unordered_set<std::string> &result_files,
             const ExcludeRules &rules) const;
-        std::vector<std::string> extract_latex_includes(const std::string &content) const;
+        std::unordered_set<std::string> extract_latex_includes(const std::string_view &content) const;
         /**** latex jumping ****/
 
         /**** utils ****/
