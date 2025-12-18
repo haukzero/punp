@@ -322,7 +322,7 @@ namespace punp {
 
             PUNP_FINALIZE_PARSE(kwargs, kwargs_keys, "REPLACE", current_line);
 
-            _rep_map_ptr->emplace(to_tstr(kwargs["FROM"]), to_tstr(kwargs["TO"]));
+            _rep_map_ptr->insert_or_assign(to_tstr(kwargs["FROM"]), to_tstr(kwargs["TO"]));
             return true;
         }
 
