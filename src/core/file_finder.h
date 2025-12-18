@@ -79,6 +79,7 @@ namespace punp {
         bool is_dir(const std::string &path) const;
         bool is_file(const std::string &path) const;
 
+        std::string maybe_expand_tilde(const std::string &path) const;
         std::string strip_trailing_slashes(std::string s) const;
         /**** utils ****/
     };

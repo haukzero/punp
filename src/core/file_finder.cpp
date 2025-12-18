@@ -25,7 +25,7 @@ namespace punp {
         // Deduplicate during collection; return value remains sorted.
         std::unordered_set<std::string> unique_files;
         for (const auto &pattern : patterns) {
-            for (auto &file : expand_pattern(pattern, recursive, ext_set, rules)) {
+            for (auto &file : expand_pattern(maybe_expand_tilde(pattern), recursive, ext_set, rules)) {
                 unique_files.insert(std::move(file));
             }
         }
@@ -653,6 +653,17 @@ namespace punp {
         } catch (const std::filesystem::filesystem_error &) {
             return false;
         }
+    }
+
+    std::string FileFinder::maybe_expand_tilde(const std::string &path) const {
+        if (path.empty() || path[0] != '~') {
+            return path;
+        }
+        const char *home = std::getenv("HOME");
+        if (!home) {
+            return path;
+        }
+        return std::string(home) + path.substr(1);
     }
 
     std::string FileFinder::strip_trailing_slashes(std::string s) const {
