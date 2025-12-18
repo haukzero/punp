@@ -23,8 +23,9 @@ namespace punp {
         std::vector<ProcessingResult> process_files(const FileProcessorConfig &config);
 
     private:
-        ACAutomaton _ac_automaton;
-        ThreadPool _thread_pool;
+        ACAutomaton _ac_automaton;           // Pattern matching engine
+        ThreadPool _thread_pool;             // Thread pool for parallel processing
+        ProtectedRegions _protected_regions; // Protected region rules (start/end markers)
 
         std::queue<WritebackNotification> _writeback_queue;
         std::mutex _writeback_mtx;
@@ -32,9 +33,11 @@ namespace punp {
         std::atomic<bool> _writeback_stop{false};
         std::thread _writeback_thread;
 
-        size_t apply_replace(text_t &text, const size_t page_offset,
-                             const GlobalProtectedIntervals &global_intervals) const;
+        size_t apply_replace(text_t &text) const;
         bool is_text_file(const std::string &file_path) const;
+
+        // Build global protected intervals for entire file content
+        ProtectedIntervals build_protected_intervals(const text_t &text) const;
 
         // Load file content into FileContent structure
         std::shared_ptr<FileContent> load_file_content(const std::string &file_path) const;

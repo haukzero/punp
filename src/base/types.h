@@ -24,14 +24,14 @@ namespace punp {
     using ProtectedRegion = std::pair<text_t, text_t>;
     using ProtectedRegions = std::vector<ProtectedRegion>;
 
-    // Global protected interval for entire file
-    struct GlobalProtectedInterval {
+    // Protected region interval in text
+    struct ProtectedInterval {
         size_t start_first;      // Position of the first char of start marker
         size_t end_last;         // Position of the last char of end marker
         size_t start_marker_len; // Length of start marker
         size_t end_marker_len;   // Length of end marker
 
-        GlobalProtectedInterval(size_t s_first, size_t e_last, size_t s_len, size_t e_len)
+        ProtectedInterval(size_t s_first, size_t e_last, size_t s_len, size_t e_len)
             : start_first(s_first), end_last(e_last), start_marker_len(s_len), end_marker_len(e_len) {}
 
         // Get the position to jump to (right after end marker)
@@ -39,7 +39,7 @@ namespace punp {
             return end_last + 1;
         }
     };
-    using GlobalProtectedIntervals = std::vector<GlobalProtectedInterval>;
+    using ProtectedIntervals = std::vector<ProtectedInterval>;
 
     // Configuration for processing
     struct FileFinderConfig {
@@ -83,7 +83,7 @@ namespace punp {
         std::atomic<int> ref_cnt{0};
         std::vector<text_t> processed_pages;
         std::atomic<size_t> total_replacements{0};
-        std::vector<GlobalProtectedInterval> protected_intervals;
+        ProtectedIntervals protected_interval;
 
         FileContent(const std::string &name, const text_t &data)
             : filename(name), content(data) {}
@@ -95,6 +95,7 @@ namespace punp {
         size_t pid;                         // Page ID
         size_t start_pos;                   // Start position in file content
         size_t end_pos;                     // End position in file content
+        bool is_protected = false;          // If this page is protected, no replacements will be applied
 
         Page(std::shared_ptr<FileContent> file_ptr, size_t page_id,
              size_t start, size_t end)

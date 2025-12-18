@@ -20,8 +20,8 @@ namespace punp {
 
         // Initialize the AC automaton with the replacement map
         _ac_automaton.build_from_map(*config_manager.replacement_map());
-        // Set protected regions
-        _ac_automaton.set_protected_regions(*config_manager.protected_regions());
+        // Save protected regions for building protected intervals during file processing
+        _protected_regions = *config_manager.protected_regions();
         // Start the writeback thread
         _writeback_thread = std::thread(&FileProcessor::writeback_worker, this);
     }
@@ -41,9 +41,6 @@ namespace punp {
         _thread_pool.shutdown();
     }
 
-    // std::vector<ProcessingResult> FileProcessor::process_files(
-    //     const std::vector<std::string> &file_paths,
-    //     size_t max_threads) {
     std::vector<ProcessingResult> FileProcessor::process_files(const FileProcessorConfig &config) {
 
         if (config.file_paths.empty()) {
@@ -207,61 +204,67 @@ namespace punp {
         }
 
         const auto &content = fc_ptr->content;
-        const auto &protected_intervals = fc_ptr->protected_intervals;
+        const auto &protected_intervals = fc_ptr->protected_interval;
         size_t content_size = content.size();
 
-        if (content_size <= PageConfig::SIZE) {
-            // Single page for small files
-            Page sp(fc_ptr, 0, 0, content_size);
-            pages.emplace_back(std::move(sp));
-            fc_ptr->ref_cnt = 1;
-            fc_ptr->processed_pages.resize(1);
-
-            return pages;
-        }
-
-        // Multiple pages for large files
         size_t page_id = 0;
         size_t start_pos = 0;
+        size_t interval_idx = 0; // Index for tracking current protected interval
 
         while (start_pos < content_size) {
-            size_t end_pos = std::min(start_pos + PageConfig::SIZE, content_size);
+            // Check if there's a protected region ahead
+            bool has_protected_ahead = false;
+            const ProtectedInterval *next_interval = nullptr;
 
-            // Try to find a good boundary (line break or space)
-            if (end_pos < content_size) {
-                size_t search_start = std::max(start_pos, end_pos - 100);
-                size_t line_break_pos = content.rfind(L'\n', end_pos);
-
-                if (line_break_pos != text_t::npos && line_break_pos > search_start) {
-                    end_pos = line_break_pos + 1;
-                } else {
-                    size_t space_pos = content.rfind(L' ', end_pos);
-                    if (space_pos != text_t::npos && space_pos > search_start) {
-                        end_pos = space_pos + 1;
-                    }
-                }
-
-                // NOTE: Check if end_pos falls inside a protected region
-                // If so, adjust to avoid splitting the protected region
-                for (const auto &interval : protected_intervals) {
-                    // If end_pos is inside a protected region [start_first, end_last]
-                    if (interval.start_first < end_pos && end_pos <= interval.end_last) {
-                        // Case 1: Protected region starts before end_pos
-                        // Move end_pos to before the protected region starts
-                        if (interval.start_first > start_pos) {
-                            end_pos = interval.start_first;
-                        } else {
-                            // Case 2: Protected region started before this page
-                            // Move end_pos to after the protected region ends
-                            end_pos = interval.skip_to();
-                        }
-                        break;
-                    }
-                }
+            if (interval_idx < protected_intervals.size()) {
+                next_interval = &protected_intervals[interval_idx];
+                has_protected_ahead = (next_interval->start_first >= start_pos);
             }
 
-            pages.emplace_back(fc_ptr, page_id++, start_pos, end_pos);
-            start_pos = end_pos;
+            // Check if we're at the start of a protected region
+            if (has_protected_ahead && start_pos == next_interval->start_first) {
+                // Create a protected page covering the entire protected region
+                size_t end_pos = next_interval->skip_to();
+                Page protected_page(fc_ptr, page_id++, start_pos, end_pos);
+                protected_page.is_protected = true;
+                pages.emplace_back(std::move(protected_page));
+
+                start_pos = end_pos;
+                interval_idx++; // Move to next protected interval
+            } else {
+                // Create a regular page
+                size_t end_pos = std::min(start_pos + PageConfig::SIZE, content_size);
+
+                // Ensure we don't cross into a protected region
+                if (has_protected_ahead && end_pos > next_interval->start_first) {
+                    // Adjust end_pos to stop before the protected region
+                    end_pos = next_interval->start_first;
+                }
+
+                // Try to find a good boundary (line break or space) only if not at protected boundary
+                if (end_pos < content_size && (!has_protected_ahead || end_pos < next_interval->start_first)) {
+                    size_t search_start = std::max(start_pos, end_pos - 100);
+                    size_t line_break_pos = content.rfind(L'\n', end_pos);
+
+                    if (line_break_pos != text_t::npos && line_break_pos > search_start) {
+                        end_pos = line_break_pos + 1;
+                    } else {
+                        size_t space_pos = content.rfind(L' ', end_pos);
+                        if (space_pos != text_t::npos && space_pos > search_start) {
+                            end_pos = space_pos + 1;
+                        }
+                    }
+
+                    // Re-check: ensure we still don't cross into protected region after boundary adjustment
+                    if (has_protected_ahead && end_pos > next_interval->start_first) {
+                        end_pos = next_interval->start_first;
+                    }
+                }
+
+                Page page(fc_ptr, page_id++, start_pos, end_pos);
+                pages.emplace_back(std::move(page));
+                start_pos = end_pos;
+            }
         }
 
         fc_ptr->ref_cnt = static_cast<int>(pages.size());
@@ -274,13 +277,80 @@ namespace punp {
         auto file_content = load_file_content(file_path);
         if (file_content) {
             // Build global protected intervals for the entire file
-            file_content->protected_intervals = _ac_automaton.build_global_protected_intervals(file_content->content);
+            file_content->protected_interval = build_protected_intervals(file_content->content);
 
             auto pages = create_pages(file_content);
             return std::make_pair(file_content, std::move(pages));
         } else {
             return std::make_pair(nullptr, std::vector<Page>{});
         }
+    }
+
+    /// Build global protected intervals for entire file content
+    /// This function scans the text and identifies all protected regions based on
+    /// start/end marker pairs. It's part of the file processing logic, not AC automaton.
+    ProtectedIntervals FileProcessor::build_protected_intervals(const text_t &text) const {
+        ProtectedIntervals intervals;
+
+        if (_protected_regions.empty() || text.empty()) {
+            return intervals;
+        }
+
+        // Single-pass scan through text
+        size_t pos = 0, text_len = text.length();
+        while (pos < text_len) {
+            // Early exit if remaining text is shorter than shortest start marker
+            if (text_len - pos < _protected_regions.front().first.length()) {
+                break;
+            }
+
+            // Try to match any start marker at current position
+            bool found_start = false;
+            const text_t *matched_start = nullptr;
+            const text_t *matched_end = nullptr;
+            size_t start_pos = pos;
+
+            for (const auto &region_ptrs : _protected_regions) {
+                const text_t &start_marker = region_ptrs.first;
+
+                if (pos + start_marker.length() <= text_len) {
+                    if (view_t(text.data() + pos, start_marker.length()) == view_t(start_marker)) {
+                        matched_start = &start_marker;
+                        matched_end = &region_ptrs.second;
+                        found_start = true;
+                        break;
+                    }
+                }
+            }
+
+            if (found_start) {
+                // Found a start marker, now search for corresponding end marker
+                size_t end_search_pos = start_pos + matched_start->length();
+                size_t end_begin = text.find(*matched_end, end_search_pos);
+
+                if (end_begin == text_t::npos) {
+                    break;
+                }
+
+                size_t end_last = end_begin + matched_end->length() - 1;
+                intervals.emplace_back(start_pos, end_last,
+                                       matched_start->length(), matched_end->length());
+                pos = end_begin + matched_end->length();
+            } else {
+                // No start marker at current position, move forward
+                ++pos;
+            }
+        }
+
+        // Sort intervals by start position for efficient lookup
+        // Note: We don't merge overlapping intervals here because we need
+        // to preserve the exact marker positions for skipping logic
+        std::sort(intervals.begin(), intervals.end(),
+                  [](const ProtectedInterval &a, const ProtectedInterval &b) {
+                      return a.start_first < b.start_first;
+                  });
+
+        return intervals;
     }
 
     PageResult FileProcessor::process_page(const Page &page) const {
@@ -295,10 +365,20 @@ namespace punp {
             const auto &full_content = page.f_ptr->content;
             result.processed_content = full_content.substr(page.start_pos, page.end_pos - page.start_pos);
 
-            // Apply replacements
-            result.n_rep = apply_replace(result.processed_content,
-                                         page.start_pos,
-                                         page.f_ptr->protected_intervals);
+            // If this page is protected, just return the original content
+            if (page.is_protected) {
+                page.f_ptr->processed_pages[page.pid] = result.processed_content;
+
+                int remaining = page.f_ptr->ref_cnt.fetch_sub(1) - 1;
+                if (remaining == 0) {
+                    size_t total_reps = page.f_ptr->total_replacements.load();
+                    const_cast<FileProcessor *>(this)->notify_writeback(page.f_ptr, total_reps);
+                }
+                return result;
+            }
+
+            // Apply replacements (no need to pass protected intervals anymore)
+            result.n_rep = apply_replace(result.processed_content);
 
             page.f_ptr->total_replacements.fetch_add(result.n_rep);
 
@@ -392,9 +472,8 @@ namespace punp {
         }
     }
 
-    size_t FileProcessor::apply_replace(text_t &text, const size_t page_offset,
-                                        const GlobalProtectedIntervals &global_intervals) const {
-        return _ac_automaton.apply_replace(text, page_offset, global_intervals);
+    size_t FileProcessor::apply_replace(text_t &text) const {
+        return _ac_automaton.apply_replace(text);
     }
 
     bool FileProcessor::is_text_file(const std::string &filePath) const {
