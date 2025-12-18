@@ -24,7 +24,9 @@ namespace punp {
             const auto expanded_pattern = maybe_expand_tilde(pattern);
             for (auto &file :
                  expand_pattern(expanded_pattern, config.recursive, ext_set, rules)) {
-                unique_files.insert(std::move(file));
+                // Normalize path to canonical form for proper deduplication
+                auto normalized = fs::absolute(fs::path(file)).lexically_normal().string();
+                unique_files.insert(std::move(normalized));
             }
         }
 
@@ -49,7 +51,9 @@ namespace punp {
 
             // Add all collected LaTeX files to the unique set
             for (auto &file : latex_files) {
-                unique_files.insert(std::move(file));
+                // Normalize path to canonical form for proper deduplication
+                auto normalized = fs::absolute(fs::path(file)).lexically_normal().string();
+                unique_files.insert(std::move(normalized));
             }
         }
 
