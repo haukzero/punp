@@ -124,6 +124,8 @@ namespace punp {
                       " -r ./ -E 'build/,.cache/,.git*'");
         print_example("Process all files in current directory with hidden files and directories",
                       "-H ./");
+        print_example("Use '**' multi-level wildcard to recursively match files with 'a' in name, dry-run mode",
+                      "'./**/*a*' -n");
     }
 
     std::vector<std::string> ArgumentParser::split_with_commas(const std::string &s) const {
