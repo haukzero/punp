@@ -16,6 +16,12 @@ namespace punp {
     class ConfigManager;
 
     class FileProcessor {
+    public:
+        explicit FileProcessor(const ConfigManager &config_manager);
+        ~FileProcessor();
+
+        std::vector<ProcessingResult> process_files(const FileProcessorConfig &config);
+
     private:
         ACAutomaton _ac_automaton;
         ThreadPool _thread_pool;
@@ -45,14 +51,6 @@ namespace punp {
         void notify_writeback(std::shared_ptr<FileContent> file_content, size_t replacements);
         void writeback_worker();
         bool writeback(const std::shared_ptr<FileContent> &file_content, size_t total_replacements) const;
-
-    public:
-        explicit FileProcessor(const ConfigManager &config_manager);
-        ~FileProcessor();
-
-        std::vector<ProcessingResult> process_files(
-            const std::vector<std::string> &file_paths,
-            size_t max_threads = 0);
     };
 
 } // namespace punp

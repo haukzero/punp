@@ -42,14 +42,22 @@ namespace punp {
     using GlobalProtectedIntervals = std::vector<GlobalProtectedInterval>;
 
     // Configuration for processing
-    struct ProcessingConfig {
+    struct FileFinderConfig {
         bool recursive = false;
-        bool verbose = false;
-        bool dry_run = false;
         bool process_hidden = false;
-        size_t max_threads = 0;                 // 0 means auto-detect
+        std::vector<std::string> patterns;      // File patterns to search
         std::vector<std::string> extensions;    // File extensions to filter
         std::vector<std::string> exclude_paths; // Files/dirs to exclude
+    };
+
+    struct FileProcessorConfig {
+        std::vector<std::string> file_paths;
+        size_t max_threads = 0; // 0 means auto-detect
+    };
+
+    struct ProcessingConfig {
+        FileFinderConfig finder_config;
+        FileProcessorConfig processor_config;
     };
 
     // update type

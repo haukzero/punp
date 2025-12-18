@@ -41,21 +41,22 @@ namespace punp {
         _thread_pool.shutdown();
     }
 
-    std::vector<ProcessingResult> FileProcessor::process_files(
-        const std::vector<std::string> &file_paths,
-        size_t max_threads) {
+    // std::vector<ProcessingResult> FileProcessor::process_files(
+    //     const std::vector<std::string> &file_paths,
+    //     size_t max_threads) {
+    std::vector<ProcessingResult> FileProcessor::process_files(const FileProcessorConfig &config) {
 
-        if (file_paths.empty()) {
+        if (config.file_paths.empty()) {
             return {};
         }
-        size_t num_files = file_paths.size();
+        size_t num_files = config.file_paths.size();
 
         std::vector<std::shared_ptr<FileContent>> file_contents(num_files);
         std::vector<std::vector<Page>> file_pages(num_files);
         std::vector<std::vector<PageResult>> page_results(num_files);
 
-        size_t num_threads = max_threads;
-        if (max_threads == 0) {
+        size_t num_threads = config.max_threads;
+        if (num_threads == 0) {
             num_threads = std::min(num_files * 2, Hardware::AUTO_NUM_THREADS);
             num_threads = std::max(num_threads, static_cast<size_t>(1));
         } else {
@@ -71,7 +72,7 @@ namespace punp {
         // Submit file loading tasks with optimized callback
         for (size_t i = 0; i < num_files; ++i) {
             _thread_pool.submit_with_callback(
-                [this, file_path = file_paths[i]]() {
+                [this, file_path = config.file_paths[i]]() {
                     return preprocess_file(file_path);
                 },
                 [this, i, &file_contents, &file_pages, &page_results, &pending_tasks, &completion_cv](
@@ -115,7 +116,7 @@ namespace punp {
         // Collect results from file_contents and page_results
         std::vector<ProcessingResult> results(num_files);
         for (size_t i = 0; i < num_files; ++i) {
-            const auto &file_path = file_paths[i];
+            const auto &file_path = config.file_paths[i];
             const auto &file_content = file_contents[i];
 
             results[i].file_path = file_path;

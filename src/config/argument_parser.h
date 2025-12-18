@@ -14,11 +14,12 @@ namespace punp {
         ArgumentParser() = default;
         ~ArgumentParser() = default;
 
-        const std::vector<std::string> &inputs() const noexcept { return _inputs; }
         const ProcessingConfig &config() const noexcept { return _config; }
         bool show_version() const noexcept { return _show_version; }
         bool show_help() const noexcept { return _show_help; }
         bool show_example() const noexcept { return _show_example; }
+        bool verbose() const noexcept { return _verbose; }
+        bool dry_run() const noexcept { return _dry_run; }
 
         bool update() const noexcept { return _update_type != UpdateType::NONE; }
         UpdateType update_type() const noexcept { return _update_type; }
@@ -34,11 +35,12 @@ namespace punp {
 
     private:
         // store arg parse results
-        std::vector<std::string> _inputs;
         ProcessingConfig _config;
         bool _show_version = false;
         bool _show_help = false;
         bool _show_example = false;
+        bool _verbose = false;
+        bool _dry_run = false;
         UpdateType _update_type = UpdateType::NONE;
 
     private:
@@ -61,7 +63,8 @@ namespace punp {
             PUNP_ADD_ARG_HANDLER("-E", "--exclude", exclude_handler),
             PUNP_ADD_ARG_HANDLER("-H", "--hidden", hidden_handler),
             PUNP_ADD_ARG_HANDLER("-n", "--dry-run", dry_run_handler),
-            PUNP_ADD_ARG_HANDLER("--show-example", "--show-example", show_example_handler), // no short name
+            // no short name
+            PUNP_ADD_ARG_HANDLER("--show-example", "--show-example", show_example_handler),
         };
 #undef PUNP_ADD_ARG_HANDLER
 

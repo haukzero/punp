@@ -43,14 +43,14 @@ int main(int argc, char *argv[]) {
 
     auto &config = parser.config();
 
-    if (!config.extensions.empty() && parser.inputs().empty()) {
+    if (!config.finder_config.extensions.empty() && config.finder_config.patterns.empty()) {
         error("When using `-e`/`--extension`, you must specify files or directories to process");
         return 1;
     }
 
     // Load configuration
     ConfigManager config_manager;
-    if (!config_manager.load(config.verbose)) {
+    if (!config_manager.load(parser.verbose())) {
         error("Failed to load configuration");
         return 1;
     }
@@ -62,23 +62,18 @@ int main(int argc, char *argv[]) {
 
     // Find files to process
     FileFinder file_finder;
-    auto file_paths = file_finder.find_files(
-        parser.inputs(),
-        config.recursive,
-        config.process_hidden,
-        config.extensions,
-        config.exclude_paths);
+    auto file_paths = file_finder.find_files(config.finder_config);
 
     if (file_paths.empty()) {
         error("No files found to process");
         return 1;
     }
 
-    if (config.verbose || config.dry_run) {
+    if (parser.verbose() || parser.dry_run()) {
         println_blue("Found ", file_paths.size(), " files to process");
     }
 
-    if (config.dry_run) {
+    if (parser.dry_run()) {
         println_yellow("These files will be processed (dry run, no changes will be made):");
         for (const auto &file : file_paths) {
             println("  ", file);
@@ -88,7 +83,7 @@ int main(int argc, char *argv[]) {
 
     // Process files
     FileProcessor processor(config_manager);
-    auto results = processor.process_files(file_paths, config.max_threads);
+    auto results = processor.process_files(config.processor_config);
 
     // Report results
     size_t n_ok = 0;
@@ -99,7 +94,7 @@ int main(int argc, char *argv[]) {
             n_ok++;
             n_rep_total += result.n_rep;
 
-            if (config.verbose) {
+            if (parser.verbose()) {
                 println_blue("- Processed: ", result.file_path);
                 if (result.n_rep > 0) {
                     println_blue(" (", result.n_rep, " replacements)");

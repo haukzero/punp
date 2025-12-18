@@ -15,8 +15,8 @@ namespace punp {
             i += consumed - 1; // Adjust index for consumed arguments
         }
 
-        return !_inputs.empty() ||
-               !_config.extensions.empty() ||
+        return !_config.finder_config.patterns.empty() ||
+               !_config.finder_config.extensions.empty() ||
                _show_version ||
                _show_help ||
                _show_example ||
@@ -36,7 +36,7 @@ namespace punp {
         }
 
         // Otherwise, it's an input file or pattern
-        _inputs.emplace_back(arg);
+        _config.finder_config.patterns.emplace_back(arg);
         return 1;
     }
 
@@ -159,7 +159,7 @@ namespace punp {
     }
 
     int ArgumentParser::verbose_handler(const char *) {
-        _config.verbose = true;
+        _verbose = true;
         return 1;
     }
 
@@ -182,14 +182,14 @@ namespace punp {
     }
 
     int ArgumentParser::recursive_handler(const char *) {
-        _config.recursive = true;
+        _config.finder_config.recursive = true;
         return 1;
     }
 
     int ArgumentParser::threads_handler(const char *next_arg) {
         if (next_arg) {
             try {
-                _config.max_threads = std::stoul(next_arg);
+                _config.processor_config.max_threads = std::stoul(next_arg);
                 return 2;
             } catch (const std::exception &) {
                 warn("Invalid thread count '", next_arg, "', using auto-detection");
@@ -210,7 +210,7 @@ namespace punp {
                     if (ext.front() == '.') {
                         ext = ext.substr(1);
                     }
-                    _config.extensions.emplace_back(ext);
+                    _config.finder_config.extensions.emplace_back(ext);
                 }
             }
             return 2;
@@ -225,7 +225,7 @@ namespace punp {
             auto paths = split_with_commas(next_arg);
             for (auto &p : paths) {
                 if (!p.empty()) {
-                    _config.exclude_paths.emplace_back(p);
+                    _config.finder_config.exclude_paths.emplace_back(p);
                 }
             }
             return 2;
@@ -236,12 +236,12 @@ namespace punp {
     }
 
     int ArgumentParser::hidden_handler(const char *) {
-        _config.process_hidden = true;
+        _config.finder_config.process_hidden = true;
         return 1;
     }
 
     int ArgumentParser::dry_run_handler(const char *) {
-        _config.dry_run = true;
+        _dry_run = true;
         return 1;
     }
 

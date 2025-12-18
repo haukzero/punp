@@ -1,5 +1,7 @@
 #pragma once
 
+#include "base/types.h"
+
 #include <filesystem>
 #include <string>
 #include <unordered_set>
@@ -11,12 +13,7 @@ namespace punp {
         FileFinder() = default;
         ~FileFinder() = default;
 
-        std::vector<std::string> find_files(
-            const std::vector<std::string> &patterns,
-            bool recursive = false,
-            bool process_hidden = false,
-            const std::vector<std::string> &extensions = {},
-            const std::vector<std::string> &exclude_paths = {}) const;
+        std::vector<std::string> find_files(const FileFinderConfig &config) const;
 
     private:
         struct ExcludeRules {

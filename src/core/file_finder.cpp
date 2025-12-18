@@ -12,20 +12,17 @@
 namespace punp {
     namespace fs = std::filesystem;
 
-    std::vector<std::string> FileFinder::find_files(
-        const std::vector<std::string> &patterns,
-        bool recursive,
-        bool process_hidden,
-        const std::vector<std::string> &extensions,
-        const std::vector<std::string> &exclude_paths) const {
+    std::vector<std::string> FileFinder::find_files(const FileFinderConfig &config) const {
 
-        ExcludeRules rules = parse_excludes(process_hidden, exclude_paths);
-        std::unordered_set<std::string> ext_set(extensions.begin(), extensions.end());
+        ExcludeRules rules = parse_excludes(config.process_hidden, config.exclude_paths);
+        std::unordered_set<std::string> ext_set(config.extensions.begin(), config.extensions.end());
 
         // Deduplicate during collection; return value remains sorted.
         std::unordered_set<std::string> unique_files;
-        for (const auto &pattern : patterns) {
-            for (auto &file : expand_pattern(maybe_expand_tilde(pattern), recursive, ext_set, rules)) {
+        for (const auto &pattern : config.patterns) {
+            const auto expanded_pattern = maybe_expand_tilde(pattern);
+            for (auto &file :
+                 expand_pattern(expanded_pattern, config.recursive, ext_set, rules)) {
                 unique_files.insert(std::move(file));
             }
         }
