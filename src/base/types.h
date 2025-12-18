@@ -45,6 +45,7 @@ namespace punp {
     struct FileFinderConfig {
         bool recursive = false;
         bool process_hidden = false;
+        bool enable_latex_jumping = false;
         std::vector<std::string> patterns;      // File patterns to search
         std::vector<std::string> extensions;    // File extensions to filter
         std::vector<std::string> exclude_paths; // Files/dirs to exclude

@@ -72,6 +72,16 @@ namespace punp {
             const ExcludeRules &rules) const;
         /**** directory traversal ****/
 
+        /**** latex jumping ****/
+        void collect_latex_includes(
+            const std::string &tex_file,
+            const std::filesystem::path &root_dir,
+            std::unordered_set<std::string> &visited_files,
+            std::unordered_set<std::string> &result_files,
+            const ExcludeRules &rules) const;
+        std::vector<std::string> extract_latex_includes(const std::string &content) const;
+        /**** latex jumping ****/
+
         /**** utils ****/
         bool is_dir(const std::string &path) const;
         bool is_file(const std::string &path) const;

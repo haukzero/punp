@@ -65,6 +65,7 @@ namespace punp {
             PUNP_ADD_ARG_HANDLER("-n", "--dry-run", dry_run_handler),
             // no short name
             PUNP_ADD_ARG_HANDLER("--show-example", "--show-example", show_example_handler),
+            PUNP_ADD_ARG_HANDLER("--enable-latex-jumping", "--enable-latex-jumping", enable_latex_jumping_handler),
         };
 #undef PUNP_ADD_ARG_HANDLER
 
@@ -80,6 +81,7 @@ namespace punp {
         int hidden_handler(const char *);
         int dry_run_handler(const char *);
         int show_example_handler(const char *);
+        int enable_latex_jumping_handler(const char *);
         /*****  Handler methods *****/
     };
 

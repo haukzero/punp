@@ -54,6 +54,7 @@ cmake --install ./build
     - `-E`, `--exclude <path>`: 排除指定文件/目录或通配符匹配的路径(可以多次使用). 注意在 shell 中使用 `*` 或 `?` 时建议加引号以避免被 shell 扩展
     - `-H`, `--hidden`: 将隐藏的文件和目录放入搜索空间中
     - `-n`, `--dry-run`: 进行一次不做任何更改的试运行, 仅打印将要处理的文件路径
+    - `--enable-latex-jumping`: 尝试针对 latex 文件中 `\input` 和 `\include` 的 latex 文件递归跳转处理
     - `--show-example`: 使用示例以及说明
 - 路径通配符:
     - `*`: 单跳通配符, 通配任意0个或任意多个字符

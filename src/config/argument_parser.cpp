@@ -86,6 +86,7 @@ namespace punp {
             {"-E, --exclude <path>", "Exclude specified file/dir or wildcard pattern from processing"},
             {"-H, --hidden", "Process hidden files and directories"},
             {"-n, --dry-run", "Perform a trial run with no changes made"},
+            {"--enable-latex-jumping", "Enable LaTeX file jumping (follow \\input and \\include)"},
             {"--show-example", "Show usage examples"},
         };
         print_aligned_kv_pairs(options);
@@ -247,6 +248,11 @@ namespace punp {
 
     int ArgumentParser::show_example_handler(const char *) {
         _show_example = true;
+        return 1;
+    }
+
+    int ArgumentParser::enable_latex_jumping_handler(const char *) {
+        _config.finder_config.enable_latex_jumping = true;
         return 1;
     }
 } // namespace punp

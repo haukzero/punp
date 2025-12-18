@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <fstream>
 #include <string_view>
 #include <unordered_set>
 
@@ -23,6 +24,31 @@ namespace punp {
             const auto expanded_pattern = maybe_expand_tilde(pattern);
             for (auto &file :
                  expand_pattern(expanded_pattern, config.recursive, ext_set, rules)) {
+                unique_files.insert(std::move(file));
+            }
+        }
+
+        // If LaTeX jumping is enabled, recursively collect included files
+        if (config.enable_latex_jumping) {
+            std::unordered_set<std::string> visited_files;
+            std::unordered_set<std::string> latex_files;
+
+            // Collect all .tex files from the initial set as starting points
+            std::vector<std::string> initial_tex_files;
+            for (const auto &file : unique_files) {
+                if (file.size() >= 4 && file.substr(file.size() - 4) == ".tex") {
+                    initial_tex_files.push_back(file);
+                }
+            }
+
+            // Recursively collect all included files from each initial .tex file
+            for (const auto &file : initial_tex_files) {
+                fs::path root_dir = fs::path(file).parent_path();
+                collect_latex_includes(file, root_dir, visited_files, latex_files, rules);
+            }
+
+            // Add all collected LaTeX files to the unique set
+            for (auto &file : latex_files) {
                 unique_files.insert(std::move(file));
             }
         }
@@ -668,6 +694,162 @@ namespace punp {
             s.pop_back();
         }
         return s;
+    }
+
+} // namespace punp
+
+// NOTE: This namespace block is used to impl latex jumping methods separately.
+namespace punp {
+    std::vector<std::string> FileFinder::extract_latex_includes(const std::string &content) const {
+        std::vector<std::string> includes;
+        size_t pos = 0;
+
+        while (pos < content.size()) {
+            // Look for \input{ or \include{
+            size_t input_pos = content.find("\\input{", pos);
+            size_t include_pos = content.find("\\include{", pos);
+
+            size_t found_pos = std::string::npos;
+            size_t cmd_len = 0;
+
+            if (input_pos != std::string::npos && (include_pos == std::string::npos || input_pos < include_pos)) {
+                found_pos = input_pos;
+                cmd_len = 7; // length of "\input{"
+            } else if (include_pos != std::string::npos) {
+                found_pos = include_pos;
+                cmd_len = 9; // length of "\include{"
+            }
+
+            if (found_pos == std::string::npos) {
+                break;
+            }
+
+            // Find the closing brace
+            size_t brace_start = found_pos + cmd_len;
+            size_t brace_end = content.find('}', brace_start);
+
+            if (brace_end == std::string::npos) {
+                pos = found_pos + cmd_len;
+                continue;
+            }
+
+            // Extract the filename
+            std::string filename = content.substr(brace_start, brace_end - brace_start);
+
+            // Trim whitespace
+            size_t first = filename.find_first_not_of(" \t\n\r");
+            size_t last = filename.find_last_not_of(" \t\n\r");
+            if (first != std::string::npos && last != std::string::npos) {
+                filename = filename.substr(first, last - first + 1);
+            }
+
+            if (!filename.empty()) {
+                includes.emplace_back(filename);
+            }
+
+            pos = brace_end + 1;
+        }
+
+        return includes;
+    }
+
+    void FileFinder::collect_latex_includes(
+        const std::string &tex_file,
+        const fs::path &root_dir,
+        std::unordered_set<std::string> &visited_files,
+        std::unordered_set<std::string> &result_files,
+        const ExcludeRules &rules) const {
+
+        // Avoid processing the same file twice
+        if (visited_files.count(tex_file)) {
+            return;
+        }
+        visited_files.insert(tex_file);
+
+        // Add the current file to results
+        result_files.insert(tex_file);
+
+        // Read the file content
+        std::ifstream file(tex_file);
+        if (!file.is_open()) {
+            return;
+        }
+
+        std::string content((std::istreambuf_iterator<char>(file)),
+                            std::istreambuf_iterator<char>());
+        file.close();
+
+        // Extract included files
+        std::vector<std::string> includes = extract_latex_includes(content);
+
+        // Get the directory of the current tex file
+        fs::path tex_path(tex_file);
+        fs::path tex_dir = tex_path.parent_path();
+
+        // Process each included file
+        for (const auto &include : includes) {
+            std::string include_path = include;
+
+            // Add .tex extension if not present
+            if (include_path.size() < 4 || include_path.substr(include_path.size() - 4) != ".tex") {
+                include_path += ".tex";
+            }
+
+            fs::path full_path;
+            bool found = false;
+
+            // NOTE: LaTeX \input{} paths can be:
+            // 1. Relative to the current file's directory
+            // 2. Relative to the root document's directory
+            // Try both approaches
+
+            if (fs::path(include_path).is_absolute()) {
+                // Absolute path
+                full_path = include_path;
+                found = true;
+            } else {
+                // Try relative to current file's directory first
+                fs::path candidate1 = tex_dir / include_path;
+
+                std::error_code ec;
+                fs::path canonical1 = fs::canonical(candidate1, ec);
+                if (!ec && is_file(canonical1.string())) {
+                    full_path = canonical1;
+                    found = true;
+                } else {
+                    // Try relative to root directory
+                    fs::path candidate2 = root_dir / include_path;
+                    fs::path canonical2 = fs::canonical(candidate2, ec);
+                    if (!ec && is_file(canonical2.string())) {
+                        full_path = canonical2;
+                        found = true;
+                    } else {
+                        // If both canonical fail, try lexically_normal
+                        if (is_file(candidate1.lexically_normal().string())) {
+                            full_path = candidate1.lexically_normal();
+                            found = true;
+                        } else if (is_file(candidate2.lexically_normal().string())) {
+                            full_path = candidate2.lexically_normal();
+                            found = true;
+                        }
+                    }
+                }
+            }
+
+            if (!found) {
+                continue;
+            }
+
+            std::string full_path_str = full_path.string();
+
+            // Check if the file is excluded
+            if (is_excluded(full_path, rules, true)) {
+                continue;
+            }
+
+            // Recursively process the included file
+            collect_latex_includes(full_path_str, root_dir, visited_files, result_files, rules);
+        }
     }
 
 } // namespace punp
