@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(punp VERSION 3.0.6 LANGUAGES CXX)
+project(punp VERSION 3.0.7 LANGUAGES CXX)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
