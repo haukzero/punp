@@ -19,7 +19,9 @@ namespace punp {
         bool show_version() const noexcept { return _show_version; }
         bool show_help() const noexcept { return _show_help; }
         bool show_example() const noexcept { return _show_example; }
-        bool update() const noexcept { return _update; }
+
+        bool update() const noexcept { return _update_type != UpdateType::NONE; }
+        UpdateType update_type() const noexcept { return _update_type; }
 
         bool parse(int argc, char *argv[]);
         static void display_version();
@@ -37,7 +39,7 @@ namespace punp {
         bool _show_version = false;
         bool _show_help = false;
         bool _show_example = false;
-        bool _update = false;
+        UpdateType _update_type = UpdateType::NONE;
 
     private:
         // handlers

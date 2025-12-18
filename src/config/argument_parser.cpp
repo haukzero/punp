@@ -20,7 +20,7 @@ namespace punp {
                _show_version ||
                _show_help ||
                _show_example ||
-               _update;
+               update();
     }
 
     int ArgumentParser::process_args(const std::string &arg, const char *next_arg) {
@@ -78,7 +78,7 @@ namespace punp {
         kv_vector_t options = {
             {"-V, --version", "Show version information"},
             {"-h, --help", "Show this help message"},
-            {"-u, --update", "Update the tool to the latest version"},
+            {"-u, --update [stable|nightly]", "Update the tool to the latest version, optionally specify update type (default: stable)"},
             {"-r, --recursive", "Process directories recursively"},
             {"-v, --verbose", "Enable verbose output"},
             {"-t, --threads <n>", "Set maximum thread count (default: auto)"},
@@ -163,9 +163,22 @@ namespace punp {
         return 1;
     }
 
-    int ArgumentParser::update_handler(const char *) {
-        _update = true;
-        return 1;
+    int ArgumentParser::update_handler(const char *next_arg) {
+        if (next_arg) {
+            std::string update_type_str = next_arg;
+            if (update_type_str == "stable") {
+                _update_type = UpdateType::STABLE;
+            } else if (update_type_str == "nightly") {
+                _update_type = UpdateType::NIGHTLY;
+            } else {
+                error("Unknown update type '", update_type_str, "'. Valid types are 'stable' and 'nightly'.");
+                return 1;
+            }
+            return 2;
+        } else {
+            _update_type = UpdateType::STABLE; // default to stable
+            return 1;
+        }
     }
 
     int ArgumentParser::recursive_handler(const char *) {

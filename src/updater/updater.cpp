@@ -2,6 +2,7 @@
 
 #include "base/color_print.h"
 #include "base/common.h"
+#include "base/types.h"
 #include "version.h"
 
 #include <filesystem>
@@ -9,7 +10,7 @@
 #include <regex>
 
 namespace punp {
-    void Updater::maybe_update() {
+    void Updater::maybe_update(const UpdateType &update_type) const {
         println("Checking for updates...");
 
         auto tmp_dir = std::filesystem::temp_directory_path() / "punp_updater";
@@ -19,9 +20,11 @@ namespace punp {
             std::filesystem::remove_all(tmp_dir);
             std::filesystem::create_directory(tmp_dir);
         }
-        auto result = check_and_compare(tmp_dir);
+
+        std::string lastest_version;
+        auto result = check_and_compare(tmp_dir, lastest_version);
         if (result == CheckResult::NO_UPDATE) {
-            update(tmp_dir);
+            update(tmp_dir, update_type, lastest_version);
         }
 
         println("Cleaning up temporary files...");
@@ -113,7 +116,7 @@ namespace punp {
         return CheckResult::UPDATED;
     }
 
-    Updater::CheckResult Updater::check_and_compare(const std::filesystem::path &tmp_dir) const {
+    Updater::CheckResult Updater::check_and_compare(const std::filesystem::path &tmp_dir, std::string &latest_version) const {
         DownloadTool tool = detect_download_tool();
         if (tool == DownloadTool::NONE) {
             error("No download tool found.");
@@ -127,10 +130,11 @@ namespace punp {
         if (remote_version_str.empty()) {
             return CheckResult::FAILED;
         }
+        latest_version = remote_version_str;
         return compare_versions(punp::version, remote_version_str);
     }
 
-    void Updater::update(const std::filesystem::path &tmp_dir) const {
+    void Updater::update(const std::filesystem::path &tmp_dir, const UpdateType &update_type, const std::string &latest_version) const {
         if (!command_exists("git")) {
             error("Git is not installed. Please install Git to update punp.");
             return;
@@ -144,7 +148,17 @@ namespace punp {
         println_yellow("Updating punp to the latest version...");
 
         auto clone_path = tmp_dir / "punp_repo";
-        std::string clone_cmd = "git clone --depth 1 " + std::string(RemoteStore::repo_url) + " " + clone_path.string();
+        std::string clone_cmd;
+        switch (update_type) {
+        case UpdateType::STABLE:
+            clone_cmd = "git clone --depth 1 --branch " + latest_version + " " + std::string(RemoteStore::repo_url) + " " + clone_path.string();
+            break;
+        case UpdateType::NIGHTLY:
+            clone_cmd = "git clone --depth 1 " + std::string(RemoteStore::repo_url) + " " + clone_path.string();
+            break;
+        default:
+            UNREACHABLE();
+        }
         if (std::system(clone_cmd.c_str()) != 0) {
             error("Failed to clone the repository.");
             return;

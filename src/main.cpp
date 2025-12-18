@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 
     if (parser.update()) {
         Updater updater;
-        updater.maybe_update();
+        updater.maybe_update(parser.update_type());
         return 0;
     }
 

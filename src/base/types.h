@@ -52,6 +52,13 @@ namespace punp {
         std::vector<std::string> exclude_paths; // Files/dirs to exclude
     };
 
+    // update type
+    enum class UpdateType {
+        NONE,
+        STABLE,
+        NIGHTLY,
+    };
+
     // File processing result
     struct ProcessingResult {
         std::string file_path;

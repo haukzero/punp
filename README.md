@@ -46,7 +46,7 @@ cmake --install ./build
 - Options 说明: 
     - `-V`, `--version`: 版本信息
     - `-h`, `--help`: 使用说明
-    - `-u`, `--update`: 自更新
+    - `-u`, `--update [stable|nightly]`: 自更新, 默认为 stable. 对于 stable, 将只更新到上一次标记 tag 的位置; 对于 nightly, 将更新到最新的一次 commit
     - `-r`, `--recursive`: 对一个目录递归的处理里面的文件
     - `-e`, `--extension`: 对导入文件路径中的文件按照文件后缀名过滤, 是否加 `.` 均可
     - `-v`, `--verbose`: 详细的结果输出
