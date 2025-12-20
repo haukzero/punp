@@ -7,6 +7,8 @@ namespace punp {
 
     namespace RuleFile {
         constexpr const char *NAME = ".prules";
+        const std::string GLOBAL_RULE_FILE_DIR = std::string(std::getenv("HOME")) + "/.local/share/punp";
+        const std::string GLOBAL_RULE_FILE_PATH = GLOBAL_RULE_FILE_DIR + "/" + NAME;
     } // namespace RuleFile
 
     namespace Hardware {
@@ -17,12 +19,6 @@ namespace punp {
     namespace PageConfig {
         constexpr const size_t SIZE = 16 * 1024; // 16KB per page
     } // namespace PageConfig
-
-    namespace StoreDir {
-        inline const char *_HOME = std::getenv("HOME");
-        inline const std::string ROOT_DIR = std::string(_HOME) + "/.local";
-        inline const std::string CONFIG_DIR = ROOT_DIR + "/share/punp/";
-    } // namespace StoreDir
 
     namespace RemoteStore {
         constexpr const char *repo_url = "https://github.com/haukzero/punp.git";

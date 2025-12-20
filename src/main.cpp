@@ -50,7 +50,7 @@ int main(int argc, char *argv[]) {
 
     // Load configuration
     ConfigManager config_manager;
-    if (!config_manager.load(parser.verbose())) {
+    if (!config_manager.load(config.rule_config, parser.verbose())) {
         error("Failed to load configuration");
         return 1;
     }

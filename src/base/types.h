@@ -41,7 +41,12 @@ namespace punp {
     };
     using ProtectedIntervals = std::vector<ProtectedInterval>;
 
-    // Configuration for processing
+    struct RuleConfig {
+        bool ignore_global_rule_file = false;
+        std::string rule_file_path;
+        std::string console_rule;
+    };
+
     struct FileFinderConfig {
         bool recursive = false;
         bool process_hidden = false;
@@ -57,6 +62,7 @@ namespace punp {
     };
 
     struct ProcessingConfig {
+        RuleConfig rule_config;
         FileFinderConfig finder_config;
         FileProcessorConfig processor_config;
     };

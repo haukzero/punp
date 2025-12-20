@@ -54,6 +54,9 @@ cmake --install ./build
     - `-E`, `--exclude <path>`: 排除指定文件/目录或通配符匹配的路径(可以多次使用). 注意在 shell 中使用 `*` 或 `?` 时建议加引号以避免被 shell 扩展
     - `-H`, `--hidden`: 将隐藏的文件和目录放入搜索空间中
     - `-n`, `--dry-run`: 进行一次不做任何更改的试运行, 仅打印将要处理的文件路径
+    - `-f`, `--rule-file <path>`: 使用特定的配置文件路径而不是在当前目录中找
+    - `-c`, `--console <rules>`: 允许直接在命令行写规则配置而不需要专门写一个配置文件
+    - `--ignore-global-rule-file`: 不导入 `$HOME/.local/share/punp/.prules` 中的规则
     - `--enable-latex-jumping`: 尝试针对 latex 文件中 `\input` 和 `\include` 的 latex 文件递归跳转处理
     - `--show-example`: 使用示例以及说明
 - 路径通配符:

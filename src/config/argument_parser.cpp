@@ -86,16 +86,21 @@ namespace punp {
             {"-E, --exclude <path>", "Exclude specified file/dir or wildcard pattern from processing"},
             {"-H, --hidden", "Process hidden files and directories"},
             {"-n, --dry-run", "Perform a trial run with no changes made"},
+            {"-f, --rule-file <path>", "Use specified rule file instead of searching current directory"},
+            {"-c, --console <rules>", "Specify rules directly from command line (highest priority)"},
+            {"--ignore-global-rule-file", "Do not load global rule file"},
             {"--enable-latex-jumping", "Enable LaTeX file jumping (follow \\input and \\include)"},
             {"--show-example", "Show usage examples"},
         };
         print_aligned_kv_pairs(options);
 
         println_green("Configuration:");
-        println_cyan("  The tool looks for '", RuleFile::NAME, "' in:");
-        println_cyan("    1. Current directory (higher priority)");
-        println_cyan("    2. ", StoreDir::CONFIG_DIR, " (lower priority)");
-        println_cyan("  Rules in higher priority locations override those in lower priority locations.");
+        println_cyan("  Rule loading priority (higher overrides lower):");
+        println_cyan("    1. Command line (--console)");
+        println_cyan("    2. Local directory (.prules in current directory)");
+        println_cyan("    3. Global config (", RuleFile::GLOBAL_RULE_FILE_PATH, ")");
+        println_cyan("  Use --rule-file to specify a custom rule file path (skips auto-search).");
+        println_cyan("  Use --ignore-global-rule-file to skip loading the global rule file.");
 
         println("-------------------------------------");
         println_green("To see more examples, run:");
@@ -127,6 +132,12 @@ namespace punp {
                       "-H ./");
         print_example("Use '**' multi-level wildcard to recursively match files with 'a' in name, dry-run mode",
                       "'./**/*a*' -n");
+        print_example("Use custom rule file instead of default locations",
+                      "-f /path/to/custom.prules file.txt");
+        print_example("Specify rules directly from command line",
+                      "-c 'REPLACE(FROM \"a\" TO \"b\");' file.txt");
+        print_example("Ignore global rule file and only use local .prules",
+                      "--ignore-global-rule-file -r ./");
     }
 
     std::vector<std::string> ArgumentParser::split_with_commas(const std::string &s) const {
@@ -253,6 +264,31 @@ namespace punp {
 
     int ArgumentParser::enable_latex_jumping_handler(const char *) {
         _config.finder_config.enable_latex_jumping = true;
+        return 1;
+    }
+
+    int ArgumentParser::rule_file_path_handler(const char *next_arg) {
+        if (next_arg) {
+            _config.rule_config.rule_file_path = next_arg;
+            return 2;
+        } else {
+            error("--rule-file requires a file path");
+            return 1;
+        }
+    }
+
+    int ArgumentParser::console_rule_handler(const char *next_arg) {
+        if (next_arg) {
+            _config.rule_config.console_rule = next_arg;
+            return 2;
+        } else {
+            error("--console requires a rule string");
+            return 1;
+        }
+    }
+
+    int ArgumentParser::ignore_global_rule_file_handler(const char *) {
+        _config.rule_config.ignore_global_rule_file = true;
         return 1;
     }
 } // namespace punp

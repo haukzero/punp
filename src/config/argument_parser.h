@@ -63,9 +63,12 @@ namespace punp {
             PUNP_ADD_ARG_HANDLER("-E", "--exclude", exclude_handler),
             PUNP_ADD_ARG_HANDLER("-H", "--hidden", hidden_handler),
             PUNP_ADD_ARG_HANDLER("-n", "--dry-run", dry_run_handler),
+            PUNP_ADD_ARG_HANDLER("-f", "--rule-file", rule_file_path_handler),
+            PUNP_ADD_ARG_HANDLER("-c", "--console", console_rule_handler),
             // no short name
             PUNP_ADD_ARG_HANDLER("--show-example", "--show-example", show_example_handler),
             PUNP_ADD_ARG_HANDLER("--enable-latex-jumping", "--enable-latex-jumping", enable_latex_jumping_handler),
+            PUNP_ADD_ARG_HANDLER("--ignore-global-rule-file", "--ignore-global-rule-file", ignore_global_rule_file_handler),
         };
 #undef PUNP_ADD_ARG_HANDLER
 
@@ -82,6 +85,9 @@ namespace punp {
         int dry_run_handler(const char *);
         int show_example_handler(const char *);
         int enable_latex_jumping_handler(const char *);
+        int rule_file_path_handler(const char *);
+        int console_rule_handler(const char *);
+        int ignore_global_rule_file_handler(const char *);
         /*****  Handler methods *****/
     };
 
