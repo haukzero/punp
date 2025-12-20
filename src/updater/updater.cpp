@@ -22,7 +22,7 @@ namespace punp {
         }
 
         std::string lastest_version;
-        auto result = check_and_compare(tmp_dir, lastest_version);
+        auto result = check_and_compare(update_type, tmp_dir, lastest_version);
         if (result == CheckResult::NO_UPDATE) {
             update(tmp_dir, update_type, lastest_version);
         }
@@ -116,7 +116,12 @@ namespace punp {
         return CheckResult::UPDATED;
     }
 
-    Updater::CheckResult Updater::check_and_compare(const std::filesystem::path &tmp_dir, std::string &latest_version) const {
+    Updater::CheckResult Updater::check_and_compare(const UpdateType &update_type, const std::filesystem::path &tmp_dir, std::string &latest_version) const {
+        // NOTE: For nightly updates, we always proceed to update.
+        if (update_type == UpdateType::NIGHTLY) {
+            return CheckResult::NO_UPDATE;
+        }
+
         DownloadTool tool = detect_download_tool();
         if (tool == DownloadTool::NONE) {
             error("No download tool found.");
