@@ -497,4 +497,4 @@ namespace punp {
         return (null_bytes * 100 / std::max(bytes_read, size_t(1))) < 1;
     }
 
-} // namespace punp << std::endl
+} // namespace punp
