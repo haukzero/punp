@@ -74,6 +74,7 @@ namespace punp {
                 },
                 [this, i, &file_contents, &file_pages, &page_results, &pending_tasks, &completion_cv](
                     std::pair<std::shared_ptr<FileContent>, std::vector<Page>> result) {
+                    file_contents[i] = result.first;
                     if (!result.first || result.second.empty()) {
                         // No valid file content or pages, decrement and notify if done
                         if (pending_tasks.fetch_sub(1) == 1) {
@@ -81,7 +82,6 @@ namespace punp {
                         }
                         return;
                     }
-                    file_contents[i] = result.first;
                     file_pages[i] = std::move(result.second);
 
                     size_t num_pages = file_pages[i].size();
@@ -156,7 +156,8 @@ namespace punp {
     std::shared_ptr<FileContent> FileProcessor::load_file_content(const std::string &file_path) const {
         try {
             if (!is_text_file(file_path)) {
-                return nullptr;
+                warn("File \"", file_path, "\" is not a text file. Skipping.");
+                return std::make_shared<FileContent>(file_path, L"");
             }
 
             // Get file size for pre-allocation hint
@@ -164,6 +165,10 @@ namespace punp {
             size_t file_size = 0;
             if (stat(file_path.c_str(), &stat_buf) == 0) {
                 file_size = static_cast<size_t>(stat_buf.st_size);
+                if (file_size == 0) {
+                    warn("File \"", file_path, "\" is empty.");
+                    return std::make_shared<FileContent>(file_path, L"");
+                }
             }
 
             std::wifstream input_file(file_path);

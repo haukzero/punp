@@ -116,6 +116,11 @@ namespace punp {
 #undef PUNP_DEFINE_COLOR_PRINTLN
 
     template <typename... Args>
+    inline void debug(Args &&...args) {
+        colored_println_err(Colors::BLUE, "Debug: ", std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
     inline void warn(Args &&...args) {
         colored_println_err(Colors::YELLOW, "Warn: ", std::forward<Args>(args)...);
     }

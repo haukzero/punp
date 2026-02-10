@@ -76,9 +76,14 @@ namespace punp {
 
         auto should_keep = [&](const std::string &path_str) {
             if (!ext_set.empty() && !has_extension(path_str, ext_set)) {
+                warn("File \"", path_str, "\" is filtered out by extension rules.");
                 return false;
             }
-            return !is_excluded(fs::path(path_str), rules, true);
+            if (is_excluded(fs::path(path_str), rules, false)) {
+                warn("File \"", path_str, "\" is filtered out by exclude rules.");
+                return false;
+            }
+            return true;
         };
 
         if (is_dir(pattern)) {
