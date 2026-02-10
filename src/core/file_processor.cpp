@@ -18,10 +18,29 @@ namespace punp {
         : _thread_pool(ThreadPool(1)),
           _writeback_stop(false) {
 
-        // Initialize the AC automaton with the replacement map
-        _ac_automaton.build_from_map(*config_manager.replacement_map());
+        // Initialize AC with the replacement map
+        const auto rep_map = config_manager.replacement_map();
+        std::vector<text_t> patterns;
+        if (rep_map) {
+            patterns.reserve(rep_map->size());
+            _replacements.reserve(rep_map->size());
+            for (const auto &pair : *rep_map) {
+                patterns.emplace_back(pair.first);
+                _replacements.emplace_back(pair.second);
+            }
+        }
+        _ac_replace.build(patterns);
+
         // Save protected regions for building protected intervals during file processing
         _protected_regions = *config_manager.protected_regions();
+        // Initialize protected start AC with start markers
+        std::vector<text_t> protected_start_patterns;
+        protected_start_patterns.reserve(_protected_regions.size());
+        for (const auto &region : _protected_regions) {
+            protected_start_patterns.emplace_back(region.first);
+        }
+        _ac_protected_start.build(protected_start_patterns);
+
         // Start the writeback thread
         _writeback_thread = std::thread(&FileProcessor::writeback_worker, this);
     }
@@ -283,6 +302,7 @@ namespace punp {
         if (file_content) {
             // Build global protected intervals for the entire file
             file_content->protected_interval = build_protected_intervals(file_content->content);
+            merge_intervals(file_content->protected_interval);
 
             auto pages = create_pages(file_content);
             return std::make_pair(file_content, std::move(pages));
@@ -291,9 +311,6 @@ namespace punp {
         }
     }
 
-    /// Build global protected intervals for entire file content
-    /// This function scans the text and identifies all protected regions based on
-    /// start/end marker pairs. It's part of the file processing logic, not AC automaton.
     ProtectedIntervals FileProcessor::build_protected_intervals(const text_t &text) const {
         ProtectedIntervals intervals;
 
@@ -301,61 +318,74 @@ namespace punp {
             return intervals;
         }
 
-        // Single-pass scan through text
-        size_t pos = 0, text_len = text.length();
-        while (pos < text_len) {
-            // Early exit if remaining text is shorter than shortest start marker
-            if (text_len - pos < _protected_regions.front().first.length()) {
-                break;
+        const auto matches = _ac_protected_start.find_iter(text);
+        if (matches.empty()) {
+            return intervals;
+        }
+
+        size_t current_pos = 0;
+
+        for (const auto &match : matches) {
+            // Skip matches that are before our current scan position (i.e. inside a previous protected region)
+            if (match.start < current_pos) {
+                continue;
             }
 
-            // Try to match any start marker at current position
-            bool found_start = false;
-            const text_t *matched_start = nullptr;
-            const text_t *matched_end = nullptr;
-            size_t start_pos = pos;
-
-            for (const auto &region_ptrs : _protected_regions) {
-                const text_t &start_marker = region_ptrs.first;
-
-                if (pos + start_marker.length() <= text_len) {
-                    if (view_t(text.data() + pos, start_marker.length()) == view_t(start_marker)) {
-                        matched_start = &start_marker;
-                        matched_end = &region_ptrs.second;
-                        found_start = true;
-                        break;
-                    }
-                }
+            // We found a start marker.
+            // match.pattern_id corresponds to the index in _protected_regions
+            if (match.pattern_id >= _protected_regions.size()) {
+                continue; // Should not happen
             }
 
-            if (found_start) {
-                // Found a start marker, now search for corresponding end marker
-                size_t end_search_pos = start_pos + matched_start->length();
-                size_t end_begin = text.find(*matched_end, end_search_pos);
+            const auto &region = _protected_regions[match.pattern_id];
+            const auto &end_marker = region.second;
 
-                if (end_begin == text_t::npos) {
-                    break;
-                }
+            // Search for the end marker starting from after the start marker
+            size_t search_start = match.end;
+            size_t end_pos = text.find(end_marker, search_start);
 
-                size_t end_last = end_begin + matched_end->length() - 1;
-                intervals.emplace_back(start_pos, end_last,
-                                       matched_start->length(), matched_end->length());
-                pos = end_begin + matched_end->length();
+            if (end_pos != text_t::npos) {
+                // Found a complete protected interval
+                size_t interval_end = end_pos + end_marker.length() - 1;
+                intervals.emplace_back(match.start, interval_end, match.length(), end_marker.length());
+
+                // Advance current_pos to after this interval
+                current_pos = end_pos + end_marker.length();
             } else {
-                // No start marker at current position, move forward
-                ++pos;
+                // Start marker not closed, treat as normal text and continue to next match
+                continue;
             }
         }
 
-        // Sort intervals by start position for efficient lookup
-        // Note: We don't merge overlapping intervals here because we need
-        // to preserve the exact marker positions for skipping logic
-        std::sort(intervals.begin(), intervals.end(),
-                  [](const ProtectedInterval &a, const ProtectedInterval &b) {
-                      return a.start_first < b.start_first;
-                  });
-
         return intervals;
+    }
+
+    void FileProcessor::merge_intervals(ProtectedIntervals &intervals) const {
+        if (intervals.size() <= 1) {
+            return;
+        }
+
+        // Optimization: build_protected_intervals guarantees sorted, non-overlapping intervals by start position.
+        // We only need to scan for containment or abutting intervals.
+
+        size_t dest = 0;
+        for (size_t src = 1; src < intervals.size(); ++src) {
+            auto &prev = intervals[dest];
+            const auto &curr = intervals[src];
+
+            if (prev.end_last + 1 == curr.start_first) {
+                prev.end_last = curr.end_last;
+                prev.end_marker_len = curr.end_marker_len;
+            } else {
+                // No merge, advance dest
+                dest++;
+                if (dest != src) {
+                    intervals[dest] = curr;
+                }
+            }
+        }
+
+        intervals.resize(dest + 1);
     }
 
     PageResult FileProcessor::process_page(const Page &page) const {
@@ -478,7 +508,39 @@ namespace punp {
     }
 
     size_t FileProcessor::apply_replace(text_t &text) const {
-        return _ac_automaton.apply_replace(text);
+        const auto matches = _ac_replace.find_iter(text);
+        if (matches.empty()) {
+            return 0;
+        }
+
+        text_t result;
+        // Estimate reserved size
+        result.reserve(text.length() + matches.size() * 4);
+
+        size_t current_pos = 0;
+        for (const auto &m : matches) {
+            // Append content before match
+            if (m.start > current_pos) {
+                result.append(text, current_pos, m.start - current_pos);
+            }
+
+            // Append replacement
+            if (m.pattern_id < _replacements.size()) {
+                result.append(_replacements[m.pattern_id]);
+            } else {
+                error("Invalid pattern_id ", m.pattern_id, " for replacement. Something went wrong!");
+            }
+
+            current_pos = m.end;
+        }
+
+        // Append remaining content
+        if (current_pos < text.length()) {
+            result.append(text, current_pos, text.length() - current_pos);
+        }
+
+        text = std::move(result);
+        return matches.size();
     }
 
     bool FileProcessor::is_text_file(const std::string &filePath) const {

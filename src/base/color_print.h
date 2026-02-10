@@ -10,6 +10,7 @@
 #define FILENO fileno
 #endif
 
+#include <cstdlib>
 #include <iostream>
 #include <string_view>
 #include <utility>
@@ -117,7 +118,13 @@ namespace punp {
 
     template <typename... Args>
     inline void debug(Args &&...args) {
-        colored_println_err(Colors::BLUE, "Debug: ", std::forward<Args>(args)...);
+        static const bool debug_enabled = []() {
+            const char *env = std::getenv("PUNP_DEBUG");
+            return env != nullptr && std::string_view(env) == "1";
+        }();
+        if (debug_enabled) {
+            colored_println_err(Colors::BLUE, "Debug: ", std::forward<Args>(args)...);
+        }
     }
 
     template <typename... Args>

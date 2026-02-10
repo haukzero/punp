@@ -31,6 +31,8 @@ namespace punp {
         size_t start_marker_len; // Length of start marker
         size_t end_marker_len;   // Length of end marker
 
+        ProtectedInterval() = default;
+
         ProtectedInterval(size_t s_first, size_t e_last, size_t s_len, size_t e_len)
             : start_first(s_first), end_last(e_last), start_marker_len(s_len), end_marker_len(e_len) {}
 

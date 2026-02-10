@@ -17,7 +17,7 @@ configure_file(
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
-    src/algorithm/ac_automaton.cpp
+    src/algorithm/aho_corasick.cpp
     src/base/thread_pool/thread_pool.cpp
     src/config/argument_parser.cpp
     src/config/config_manager.cpp

@@ -26,6 +26,8 @@ namespace punp {
             bool ignore_hidden = false;
         };
 
+        /////////////////////////////////////////////////////////////////////////////////////////////////
+
         std::vector<std::string> expand_pattern(
             const std::string &pattern,
             bool recursive,

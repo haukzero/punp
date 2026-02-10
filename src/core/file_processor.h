@@ -1,6 +1,6 @@
 #pragma once
 
-#include "algorithm/ac_automaton.h"
+#include "algorithm/aho_corasick.h"
 #include "base/thread_pool/thread_pool.h"
 #include "base/types.h"
 
@@ -23,9 +23,15 @@ namespace punp {
         std::vector<ProcessingResult> process_files(const FileProcessorConfig &config);
 
     private:
-        ACAutomaton _ac_automaton;           // Pattern matching engine
-        ThreadPool _thread_pool;             // Thread pool for parallel processing
+        AhoCorasick _ac_replace;           // Pattern matching engine for replacements
+        std::vector<text_t> _replacements; // Replacement strings corresponding to AC patterns
+
+        AhoCorasick _ac_protected_start;     // Pattern matching engine for protected region start markers
         ProtectedRegions _protected_regions; // Protected region rules (start/end markers)
+
+        ThreadPool _thread_pool; // Thread pool for parallel processing
+
+        /////////////////////////////////////////////////////////////////////////////////////////////////
 
         std::queue<WritebackNotification> _writeback_queue;
         std::mutex _writeback_mtx;
@@ -38,6 +44,8 @@ namespace punp {
 
         // Build global protected intervals for entire file content
         ProtectedIntervals build_protected_intervals(const text_t &text) const;
+        // Merge adjacent intervals in-place
+        void merge_intervals(ProtectedIntervals &intervals) const;
 
         // Load file content into FileContent structure
         std::shared_ptr<FileContent> load_file_content(const std::string &file_path) const;
