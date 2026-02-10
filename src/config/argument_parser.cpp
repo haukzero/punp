@@ -17,6 +17,7 @@ namespace punp {
 
         return !_config.finder_config.patterns.empty() ||
                !_config.finder_config.extensions.empty() ||
+               !_config.finder_config.external_file_finder_cmd.empty() ||
                _show_version ||
                _show_help ||
                _show_example ||
@@ -90,6 +91,7 @@ namespace punp {
             {"-c, --console <rules>", "Specify rules directly from command line (highest priority)"},
             {"--ignore-global-rule-file", "Do not load global rule file"},
             {"--enable-latex-jumping", "Enable LaTeX file jumping (follow \\input and \\include)"},
+            {"--external-file-finder <cmd>", "Use external command to find files (command should output file paths separated by newlines)"},
             {"--show-example", "Show usage examples"},
         };
         print_aligned_kv_pairs(options);
@@ -138,6 +140,8 @@ namespace punp {
                       "-c 'REPLACE(FROM \"a\" TO \"b\");' file.txt");
         print_example("Ignore global rule file and only use local .prules",
                       "--ignore-global-rule-file -r ./");
+        print_example("Use external file finder command (e.g., use linux find to find all .md files)",
+                      "--external-file-finder \"find . -name '*.md'\"");
     }
 
     std::vector<std::string> ArgumentParser::split_with_commas(const std::string &s) const {
@@ -290,5 +294,15 @@ namespace punp {
     int ArgumentParser::ignore_global_rule_file_handler(const char *) {
         _config.rule_config.ignore_global_rule_file = true;
         return 1;
+    }
+
+    int ArgumentParser::external_file_finder_handler(const char *next_arg) {
+        if (next_arg) {
+            _config.finder_config.external_file_finder_cmd = next_arg;
+            return 2;
+        } else {
+            error("--external-file-finder requires a command");
+            return 1;
+        }
     }
 } // namespace punp

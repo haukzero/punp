@@ -91,6 +91,10 @@ namespace punp {
         std::string maybe_expand_tilde(const std::string &path) const;
         std::string strip_trailing_slashes(std::string s) const;
         /**** utils ****/
+
+        /**** external file finder ****/
+        std::vector<std::string> find_files_external(const std::string &cmd) const;
+        /**** external file finder ****/
     };
 
 } // namespace punp

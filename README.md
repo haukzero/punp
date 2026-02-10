@@ -58,6 +58,7 @@ cmake --install ./build
     - `-c`, `--console <rules>`: 允许直接在命令行写规则配置而不需要专门写一个配置文件
     - `--ignore-global-rule-file`: 不导入 `$HOME/.local/share/punp/.prules` 中的规则
     - `--enable-latex-jumping`: 尝试针对 latex 文件中 `\input` 和 `\include` 的 latex 文件递归跳转处理
+    - `--external-file-finder <cmd>`: 允许使用外部文件查找器来查找所需要修改的文件
     - `--show-example`: 使用示例以及说明
 - 路径通配符:
     - `*`: 单跳通配符, 通配任意0个或任意多个字符

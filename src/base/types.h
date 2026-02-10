@@ -53,6 +53,8 @@ namespace punp {
         bool recursive = false;
         bool process_hidden = false;
         bool enable_latex_jumping = false;
+        std::string external_file_finder_cmd;   // If set, this command will be used to find files instead of built-in finder.
+                                                // The command should output file paths separated by newlines.
         std::vector<std::string> patterns;      // File patterns to search
         std::vector<std::string> extensions;    // File extensions to filter
         std::vector<std::string> exclude_paths; // Files/dirs to exclude

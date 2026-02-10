@@ -15,6 +15,19 @@ namespace punp {
 
     std::vector<std::string> FileFinder::find_files(const FileFinderConfig &config) const {
 
+        if (!config.external_file_finder_cmd.empty()) {
+            const auto eff_results = find_files_external(config.external_file_finder_cmd);
+            if (eff_results.empty()) {
+                warn("External file finder command '", config.external_file_finder_cmd, "' did not return any files or failed to execute.");
+            } else {
+                debug("External file finder returned ", eff_results.size(), " files.");
+                for (const auto &file : eff_results) {
+                    debug("  ", file);
+                }
+            }
+            return eff_results;
+        }
+
         ExcludeRules rules = parse_excludes(config.process_hidden, config.exclude_paths);
         std::unordered_set<std::string> ext_set(config.extensions.begin(), config.extensions.end());
 
@@ -861,4 +874,31 @@ namespace punp {
         }
     }
 
+} // namespace punp
+
+// NOTE: This namespace block is used to impl get external file finder results.
+namespace punp {
+    std::vector<std::string> FileFinder::find_files_external(const std::string &cmd) const {
+        std::vector<std::string> results;
+        FILE *pipe = popen(cmd.c_str(), "r");
+        if (!pipe) {
+            error("Failed to run external file finder command: ", cmd);
+            return results;
+        }
+
+        char buffer[4096];
+        while (fgets(buffer, sizeof(buffer), pipe)) {
+            std::string line(buffer);
+            // Remove trailing newline
+            if (!line.empty() && line.back() == '\n') {
+                line.pop_back();
+            }
+            if (!line.empty()) {
+                results.push_back(std::move(line));
+            }
+        }
+
+        pclose(pipe);
+        return results;
+    }
 } // namespace punp

@@ -69,6 +69,7 @@ namespace punp {
             PUNP_ADD_ARG_HANDLER("--show-example", "--show-example", show_example_handler),
             PUNP_ADD_ARG_HANDLER("--enable-latex-jumping", "--enable-latex-jumping", enable_latex_jumping_handler),
             PUNP_ADD_ARG_HANDLER("--ignore-global-rule-file", "--ignore-global-rule-file", ignore_global_rule_file_handler),
+            PUNP_ADD_ARG_HANDLER("--external-file-finder", "--external-file-finder", external_file_finder_handler),
         };
 #undef PUNP_ADD_ARG_HANDLER
 
@@ -88,6 +89,7 @@ namespace punp {
         int rule_file_path_handler(const char *);
         int console_rule_handler(const char *);
         int ignore_global_rule_file_handler(const char *);
+        int external_file_finder_handler(const char *);
         /*****  Handler methods *****/
     };
 
