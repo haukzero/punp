@@ -39,6 +39,7 @@ namespace punp {
             void parse_statement();
 
             bool parse_replace();
+            bool parse_rm();
             bool parse_del();
             bool parse_clear();
             bool parse_protect();
@@ -50,6 +51,7 @@ namespace punp {
             using parse_func_map_t = std::unordered_map<std::string, parse_func_t>;
             const parse_func_map_t _parse_func_map = {
                 {"REPLACE", &Parser::parse_replace},
+                {"RM", &Parser::parse_rm},
                 {"DEL", &Parser::parse_del},
                 {"CLEAR", &Parser::parse_clear},
                 {"PROTECT", &Parser::parse_protect},

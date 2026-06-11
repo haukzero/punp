@@ -1,5 +1,7 @@
 ## Change Log
 
+- 2026.06.11
+    - 添加规则 `RM(FROM "old text")` 用于删除指定字符串(等价于 `REPLACE(FROM "old text", TO "")`)
 -2026.02.10
     - 更多的错误/警告提示信息
     - 允许使用外部的文件查找器来查找文件: `punp --external-file-finder <cmd>`

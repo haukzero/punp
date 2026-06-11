@@ -326,6 +326,22 @@ namespace punp {
             return true;
         }
 
+        // Rm format: RM(FROM "...");
+        bool Parser::parse_rm() {
+            size_t current_line = _current_token.line;
+            auto kwargs_keys = kwargs_keys_t({"FROM"});
+            bool is_valid = true;
+            auto kwargs = parse_args(kwargs_keys, is_valid);
+
+            if (!is_valid)
+                return false;
+
+            PUNP_FINALIZE_PARSE(kwargs, kwargs_keys, "RM", current_line);
+
+            _rep_map_ptr->insert_or_assign(to_tstr(kwargs["FROM"]), text_t());
+            return true;
+        }
+
         // Del format: DEL(FROM "...");
         bool Parser::parse_del() {
             size_t current_line = _current_token.line;

@@ -4,7 +4,9 @@
  *     - line comment: // This is a line comment
  *     - block comment: /* This is a block comment */
  *
- * - Add rule: REPLACE(FROM "old text", TO "new text");
+ * - Add rule: 
+ *     - REPLACE(FROM "old text", TO "new text");
+ *     - RM(FROM "old text"); // equals to `REPLACE(FROM "old text", TO "");`
  * - Delete rule: DEL(FROM "old text");
  * - Clear rules: CLEAR();
  * 
