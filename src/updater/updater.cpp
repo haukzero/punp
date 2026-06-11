@@ -38,53 +38,48 @@ namespace punp {
         return (ret == 0);
     }
 
-    Updater::DownloadTool Updater::detect_download_tool() const {
-        if (command_exists("wget")) {
-            return DownloadTool::WGET;
-        } else if (command_exists("curl")) {
-            return DownloadTool::CURL;
-        }
-        return DownloadTool::NONE;
-    }
-
-    std::string Updater::get_remote_version(const DownloadTool &tool, const std::filesystem::path &tmp_dir) const {
-        auto tmp_file_path = tmp_dir / "CMakeLists.txt";
-        std::string download_cmd;
-
-        switch (tool) {
-        case DownloadTool::WGET:
-            download_cmd = "wget -q -O " + tmp_file_path.string() + " " + RemoteStore::version_file_url;
-            break;
-        case DownloadTool::CURL:
-            download_cmd = "curl -s -o " + tmp_file_path.string() + " " + RemoteStore::version_file_url;
-            break;
-        default:
-            UNREACHABLE();
-        }
-
-        if (std::system(download_cmd.c_str()) != 0) {
-            error("Failed to download version file.");
+    std::string Updater::get_remote_version(const std::filesystem::path &tmp_dir) const {
+        // NOTE: The latest stable version is determined by the highest semantic
+        // version git tag, which is exactly what `git clone --branch <tag>` uses
+        // during the update. Relying on the tags (instead of parsing a branch's
+        // CMakeLists.txt) avoids the case where a tag is pushed before the
+        // in-source version is bumped, which would otherwise hide a new release.
+        auto tmp_file_path = tmp_dir / "remote_tags.txt";
+        std::string ls_remote_cmd = "git ls-remote --tags --refs " + std::string(RemoteStore::repo_url) +
+                                    " > " + tmp_file_path.string() + " 2>/dev/null";
+        if (std::system(ls_remote_cmd.c_str()) != 0) {
+            error("Failed to fetch remote tags.");
             return "";
         }
 
-        std::ifstream version_file(tmp_file_path);
-        if (!version_file.is_open()) {
-            error("Failed to open downloaded version file.");
+        std::ifstream tags_file(tmp_file_path);
+        if (!tags_file.is_open()) {
+            error("Failed to open remote tags file.");
             return "";
         }
-        std::string content((std::istreambuf_iterator<char>(version_file)), std::istreambuf_iterator<char>());
-        version_file.close();
 
-        std::string regex_str = "project\\s*\\(\\s*" + std::string(punp::name) + "\\s+VERSION\\s+([0-9.]+)";
-        std::regex version_regex(regex_str);
-        std::smatch match;
-        if (std::regex_search(content, match, version_regex)) {
-            if (match.size() > 1) {
-                return match.str(1);
+        std::regex tag_regex(R"(refs/tags/([0-9]+\.[0-9]+\.[0-9]+)\s*$)");
+        std::string latest;
+        version_t latest_ver = {0, 0, 0};
+        std::string line;
+        while (std::getline(tags_file, line)) {
+            std::smatch match;
+            if (std::regex_search(line, match, tag_regex)) {
+                std::string candidate = match.str(1);
+                version_t candidate_ver = parse_version(candidate);
+                if (latest.empty() || candidate_ver > latest_ver) {
+                    latest = candidate;
+                    latest_ver = candidate_ver;
+                }
             }
         }
+        tags_file.close();
 
-        UNREACHABLE();
+        if (latest.empty()) {
+            error("No valid version tag found in the remote repository.");
+            return "";
+        }
+        return latest;
     }
 
     Updater::version_t Updater::parse_version(const std::string &version_str) const {
@@ -107,10 +102,9 @@ namespace punp {
         version_t local_ver = parse_version(local_version);
         version_t remote_ver = parse_version(remote_version);
 
-        for (size_t i = 0; i < 3; ++i) {
-            if (remote_ver[i] > local_ver[i]) {
-                return CheckResult::NO_UPDATE;
-            }
+        // std::array compares lexicographically: major, then minor, then patch.
+        if (remote_ver > local_ver) {
+            return CheckResult::NO_UPDATE;
         }
         println_green("You are using the latest version (", local_version, ").");
         return CheckResult::UPDATED;
@@ -122,16 +116,12 @@ namespace punp {
             return CheckResult::NO_UPDATE;
         }
 
-        DownloadTool tool = detect_download_tool();
-        if (tool == DownloadTool::NONE) {
-            error("No download tool found.");
-            println_yellow("Hint: You can try downloading the downloader first and then try again:");
-            println_yellow("  - wget");
-            println_yellow("  - curl");
+        if (!command_exists("git")) {
+            error("Git is not installed. Please install Git to check for updates.");
             return CheckResult::FAILED;
         }
 
-        std::string remote_version_str = get_remote_version(tool, tmp_dir);
+        std::string remote_version_str = get_remote_version(tmp_dir);
         if (remote_version_str.empty()) {
             return CheckResult::FAILED;
         }

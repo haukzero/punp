@@ -22,7 +22,6 @@ namespace punp {
 
     namespace RemoteStore {
         constexpr const char *repo_url = "https://github.com/haukzero/punp.git";
-        constexpr const char *version_file_url = "https://raw.githubusercontent.com/haukzero/punp/refs/heads/master/CMakeLists.txt";
     } // namespace RemoteStore
 
 #if defined(__GNUC__) || defined(__clang__)
